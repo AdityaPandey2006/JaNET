@@ -1,6 +1,6 @@
 const express=require('express');
 const router=express.Router();
-const User=require('./models/User'); //jo user ke actual collection ko export karwa rahe the User.js se, yeh basically allow karte hai mongodb pe jitne bhi users hain unko access karne ko
+const User=require('../models/User'); //jo user ke actual collection ko export karwa rahe the User.js se, yeh basically allow karte hai mongodb pe jitne bhi users hain unko access karne ko
 
 //adding a new node(new user)
 //mongodb functions here .save() and .find() both will return promises
@@ -62,3 +62,32 @@ module.exports=router;//after this plugged in this router to the server.js
 //but modularity ke liye ek alag router bana rahe
 //(basically aise samjho ki yeh ek sub-app jaisa hai jo saare /api/user wale route ko hi use karta hai)
 //baad mein yeh router ko main app mein plug-in kar denge
+
+//==>>furthur addition after friends.js made, to get list of mongodb ids of all friends
+//loading the list of neighbouring nodes or friends of a user
+router.get('/:id/getFriends',async(req,res)=>{
+    try{
+        // const userId=req.body; YEH USE MAHI KAR SAKTE KYUNKI GET REQUESTS KA BODY HOTA HI NAHI
+        const userId=req.params.id;
+        const userObj=await User.findById(userId);
+        if(!userObj){
+            let errMessage="user does not exist";
+            res.status(400).json({message:errMessage});
+            return;
+        }
+        // const friends=await Promise.all(userObj.friends.map(async (friend)=>{
+        //     const friendData=await User.findById(friend.userId);
+        //     return friendData.name;
+        //     // friend.userId;
+        // }));
+        const friends=await userObj.friends.map((friend)=>{
+            return friend.userId;
+        })
+    
+        res.status(200).json({friends});
+    }
+    catch(err){
+        let errMessage="could not get friend list due to error: "
+        res.status(400).json({message:errMessage+err});
+    }
+});

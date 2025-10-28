@@ -40,6 +40,19 @@ const userSchema=new mongoose.Schema({
         }
 
     }
-    ]
+    ],
+    friendRequests:[{
+        requestsFrom:{
+            type:mongoose.Schema.Types.ObjectId,
+            ref:"User"
+        }
+    }
+    ],
+    sentRequests:[{
+        sentTo:{
+            type:mongoose.Schema.Types.ObjectId,
+            ref:"User"
+        }
+    }]
 });
 module.exports=mongoose.model("User",userSchema);//isko export karna padega baaki models mein use karne ke liye

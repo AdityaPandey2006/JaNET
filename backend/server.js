@@ -36,3 +36,5 @@ app.listen(PORT,()=>{
 //for routes/users => add new user, load all users, load a user with a particular id
 const userRoutes=require('./routes/users');
 app.use('/api/users',userRoutes);
+const friendRoutes=require('./routes/friends');
+app.use('/api/friends',friendRoutes);
