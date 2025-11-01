@@ -1,6 +1,9 @@
 const express=require('express');
 const router=express.Router();
 const User=require('../models/User'); //jo user ke actual collection ko export karwa rahe the User.js se, yeh basically allow karte hai mongodb pe jitne bhi users hain unko access karne ko
+const { MaxPriorityQueue } = require('@datastructures-js/priority-queue');
+
+
 
 //adding a new node(new user)
 //mongodb functions here .save() and .find() both will return promises
@@ -47,7 +50,7 @@ router.get('/:id',async(req,res)=>{
     }
 })
 
-module.exports=router;//after this plugged in this router to the server.js
+// module.exports=router;//after this plugged in this router to the server.js
 
 
 
@@ -125,3 +128,81 @@ router.get('/:id/friendrecommendations', async(req,res) => {
     }
 });
 
+
+//gvinng friend recommendations to a user
+//user A ko friend recommendation dene ke liye hum log basically friends of friends ka use karte hain
+//jo fof tumhare khud ke friends nahi hain unka list nikalo. let's say A ka frnd B ka frnd C aur A ka frnd D ka frnd E
+//toh C aur E mein ranking aise decide hoga ki A ka B se zyada achha hai jaccard similarity ya D ke saath
+
+let jaccardSim=function(friendsCountA,friendsCountB,mutualFriendsCount){
+    return mutualFriendsCount/(friendsCountA+friendsCountB-mutualFriendsCount);//intersection/union
+}
+
+router.get('/:id/giveReccomendation',async (req,res)=>{
+    try{
+        const userId=req.params.id;
+        const userObj=await User.findById(userId);
+        const friends=await friendGetter(userObj);//i get the ids of all friends of the user
+        let possibleRecommendIds=new Set();//gives the list of ids that can be recommended. 
+        // we use set so that only runique recommendations are put
+        for(const frndId in friends){
+            const frndObj=await User.findById(frndId);
+            const fofs=await friendGetter(frndObj);// i find the friends of each frnd of the user and check to see if they are already friends of A or not
+            for(const fofId of fofs){
+                const fofObj=await User.findById(fofId);
+                let flag=1;//if flag =1 means we will send it to the list of possible recommendations
+                //we wont add in the set of possible recommendations if:a)it is the user itself b)fof is already a friend of user
+                let alreadyFriend=userObj.friends.some((friend)=>{
+                    if(friend.userId.toString()===fofId){
+                        return true;
+                    }
+                    else{
+                        return false;
+                    }
+                });
+                if(fofId===userId||alreadyFriend){
+                    flag=0;
+                }
+                if(flag==1){
+                    possibleRecommendIds.add(fofId);
+                }
+
+            }
+        }
+        //i now have the set of possible recommendation ids. from here will suggest friends
+        let maxRecc=10;//ek baar mein max to max 10 logon ko recommend karenge friend request ke liye
+        const pq = new MaxPriorityQueue({priority:(item)=>item.sim});
+        for(const recc of possibleRecommendIds){
+            const reccObj=await User.findById(recc);
+            if(!reccObj){
+                continue;
+            }
+            const reccFriends=await friendGetter(reccObj);
+            let count=0;
+            for(const frnd of friends){
+                for(const reccFrnd of reccFriends){
+                    if(frnd.toString()===reccFrnd.toString()) count++;
+                }
+            }
+            let jaccSim=jaccardSim(friends.length,reccFriends.length,count);
+            pq.enqueue({sim:jaccSim,id:recc,mutual:count});
+
+        }
+        let actualRecommendations=[];
+        for(let i=0;i<maxRecc;i++){
+            // let max=pq.dequeue;
+            if(pq.isEmpty()) break;
+            actualRecommendations.push(pq.dequeue().element);
+        }
+        res.status(200).json({message:"friend recommendation",recommendations:actualRecommendations});
+    }
+    catch(err){
+        let errMessage="could not fetch friend recommendations due to error: "+err.message;
+        res.status(400).json({message:errMessage});
+
+    }
+});
+
+
+module.exports=router;//after this plugged in this router to the server.js
+// router.post('/:id/giveRecommendation',async (req,res))
