@@ -91,3 +91,37 @@ router.get('/:id/getFriends',async(req,res)=>{
         res.status(400).json({message:errMessage+err});
     }
 });
+
+function findFriends(userid){
+    const userObj = User.findById(userid);
+
+    if(!userObj){
+        res.status(500).json({message: "User Does not exist"});
+        return;
+    }
+    
+    const friends = userObj.friends.map((friend)=>{
+        return friend.userId;
+    })
+
+    return friends;
+}
+
+//get friend recommendations page using BFS
+router.get('/:id/friendrecommendations', async(req,res) => {
+    try{
+        const userid = req.params.id;
+
+        const friends = findFriends(userid);
+
+        const fof = friends.map((element) => {
+            return findFriends(element);
+        })
+
+        res.status(200).json({fof});
+    }
+    catch(err){
+        res.status(500).json({message:"Could not recommend friends due to error: "+err});
+    }
+});
+

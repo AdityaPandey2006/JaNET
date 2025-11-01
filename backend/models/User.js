@@ -3,6 +3,7 @@
 seperate schema defining folder for the posts and we will later link it to the user
 */
 const mongoose=require('mongoose');
+const post = require('Post');
 //each user will have name, username, numOfPosts(later), an intro 
 const userSchema=new mongoose.Schema({
     name:{
@@ -27,7 +28,7 @@ const userSchema=new mongoose.Schema({
     intro:{
         type: String
     },
-    //we are storing the entire set of usewrs in a graph. for each user, there is a set of friends. Friends list is an array list
+    //we are storing the entire set of users in a graph. for each user, there is a set of friends. Friends list is an array list
     //if a and b are friends, a will have b stored as a friend. b will have a stored as a friend
     friends:[{
         userId:{
@@ -53,6 +54,13 @@ const userSchema=new mongoose.Schema({
             type:mongoose.Schema.Types.ObjectId,
             ref:"User"
         }
+    }],
+
+    Posts:[{
+        postId:{
+            type:mongoose.Schema.Types.ObjectId,
+            ref:"Post"
+        },
     }]
 });
 module.exports=mongoose.model("User",userSchema);//isko export karna padega baaki models mein use karne ke liye
