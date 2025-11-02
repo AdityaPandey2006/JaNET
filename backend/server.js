@@ -38,3 +38,5 @@ const userRoutes=require('./routes/users');
 app.use('/api/users',userRoutes);
 const friendRoutes=require('./routes/friends');
 app.use('/api/friends',friendRoutes);
+const chatRoutes = require("./routes/chats");
+app.use("/api/chats", chatRoutes);
