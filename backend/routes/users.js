@@ -134,18 +134,33 @@ router.get('/:id/friendrecommendations', async(req,res) => {
 //jo fof tumhare khud ke friends nahi hain unka list nikalo. let's say A ka frnd B ka frnd C aur A ka frnd D ka frnd E
 //toh C aur E mein ranking aise decide hoga ki A ka B se zyada achha hai jaccard similarity ya D ke saath
 
+async function friendGetter(userObj1){
+    if(!userObj1||!userObj1.friends){
+        return [];
+    }
+    const friends=userObj1.friends.map((friend)=>{
+        return friend.userId;
+    })
+    return friends;
+}
+
 let jaccardSim=function(friendsCountA,friendsCountB,mutualFriendsCount){
     return mutualFriendsCount/(friendsCountA+friendsCountB-mutualFriendsCount);//intersection/union
 }
 
-router.get('/:id/giveReccomendation',async (req,res)=>{
+router.get('/:id/giveRecommendation',async (req,res)=>{
     try{
         const userId=req.params.id;
         const userObj=await User.findById(userId);
+        if(!userObj){
+            let errMessage="user does not exist";
+            res.status(400).json({message:errMessage});
+            return;
+        }
         const friends=await friendGetter(userObj);//i get the ids of all friends of the user
         let possibleRecommendIds=new Set();//gives the list of ids that can be recommended. 
         // we use set so that only runique recommendations are put
-        for(const frndId in friends){
+        for(const frndId of friends){
             const frndObj=await User.findById(frndId);
             const fofs=await friendGetter(frndObj);// i find the friends of each frnd of the user and check to see if they are already friends of A or not
             for(const fofId of fofs){
@@ -153,25 +168,30 @@ router.get('/:id/giveReccomendation',async (req,res)=>{
                 let flag=1;//if flag =1 means we will send it to the list of possible recommendations
                 //we wont add in the set of possible recommendations if:a)it is the user itself b)fof is already a friend of user
                 let alreadyFriend=userObj.friends.some((friend)=>{
-                    if(friend.userId.toString()===fofId){
+                    if(friend.userId.toString()===fofId.toString()){
                         return true;
                     }
                     else{
                         return false;
                     }
                 });
-                if(fofId===userId||alreadyFriend){
+                if(fofId.toString()===userId.toString()||alreadyFriend){
                     flag=0;
                 }
                 if(flag==1){
-                    possibleRecommendIds.add(fofId);
+                    possibleRecommendIds.add(fofId.toString());
+                    //pichhle line ka toString important hai because object comparisons in javascript always lead to null values toh do same object jaae bhi toh set ke liye woh alag hi hoga
                 }
 
             }
         }
         //i now have the set of possible recommendation ids. from here will suggest friends
         let maxRecc=10;//ek baar mein max to max 10 logon ko recommend karenge friend request ke liye
-        const pq = new MaxPriorityQueue({priority:(item)=>item.sim});
+
+
+        // const pq = new MaxPriorityQueue({priority:(item)=>item.sim});
+        const pq =new MaxPriorityQueue((item) => item.sim);//version ke chalte upar ka syntax bhi ho sakta hai
+
         for(const recc of possibleRecommendIds){
             const reccObj=await User.findById(recc);
             if(!reccObj){
@@ -192,7 +212,8 @@ router.get('/:id/giveReccomendation',async (req,res)=>{
         for(let i=0;i<maxRecc;i++){
             // let max=pq.dequeue;
             if(pq.isEmpty()) break;
-            actualRecommendations.push(pq.dequeue().element);
+            actualRecommendations.push(pq.front());
+            pq.dequeue();
         }
         res.status(200).json({message:"friend recommendation",recommendations:actualRecommendations});
     }
