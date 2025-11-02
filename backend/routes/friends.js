@@ -75,6 +75,62 @@ router.post('/sendrequest', async (req,res)=>{
     }
 });
 
+// send friend requests to multiple users at once
+router.post('/sendmass', async (req, res) => {
+    try {
+        const { userId, targetIds } = req.body; // targetIds should be an array of user IDs
+
+        if (!Array.isArray(targetIds) || targetIds.length === 0) {
+            return res.status(400).json({ message: "targetIds must be a non-empty array" });
+        }
+
+        const userObj = await User.findById(userId);
+        if (!userObj) {
+            return res.status(400).json({ message: "user does not exist" });
+        }
+
+        const validTargets = [];
+
+        for (const targetId of targetIds) {
+            if (targetId === userId) continue; // can't friend self
+                const targetObj = await User.findById(targetId);
+            if (!targetObj) continue; // skip invalid IDs
+
+            const alreadyFriend = userObj.friends.some(f => f.userId.toString() === targetId);
+            const alreadyRequested = userObj.sentRequests.some(r => r.sentTo.toString() === targetId);
+
+            if (!alreadyFriend && !alreadyRequested) {
+                // send request
+                await User.updateOne(
+                    { _id: userId },
+                    { $push: { sentRequests: { sentTo: targetId } } }
+                );
+                await User.updateOne(
+                    { _id: targetId },
+                    { $push: { friendRequests: { requestsFrom: userId } } }
+                );
+
+                validTargets.push(targetId);
+            }
+        }
+
+        if (validTargets.length === 0) {
+            return res.status(400).json({ message: "No valid users to send requests to" });
+        }
+
+        res.status(200).json({
+            message: `Requests sent to ${validTargets.length} users`,
+            sentTo: validTargets
+        });
+
+    }
+    catch (err) {
+    console.error("Error in /sendmass:", err);
+    res.status(500).json({ message: "Error in mass requests", error: err.message });
+    }
+});
+
+
 //accept friend requests
 router.post('/acceptrequest',async (req,res)=>{
     try{

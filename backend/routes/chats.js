@@ -22,8 +22,8 @@ router.get("/:userid1/:userid2",async(req,res)=>{
         const{userid1,userid2}=req.params;
         const messages=await Chat.find({
             $or: [
-        { sender: userid1, receiver: userid2 },
-        { sender: userid2, receiver: userid1 },
+        { sender: userid1, reciever: userid2 },
+        { sender: userid2, reciever: userid1 },
         ],
         }).sort({ timestamp: 1 });
         res.status(200).json(messages);
@@ -33,3 +33,5 @@ router.get("/:userid1/:userid2",async(req,res)=>{
         res.status(500).json({ error: "Server error" });
     }
 })
+
+module.exports = router;

@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const express=require('express');
 const router=express.Router();
 const User=require('../models/User'); //jo user ke actual collection ko export karwa rahe the User.js se, yeh basically allow karte hai mongodb pe jitne bhi users hain unko access karne ko
@@ -19,6 +20,34 @@ router.post('/addUser', async (req,res)=>{
     }
     catch(err){
         let errMessage="could not create new user "+err.message;
+        res.status(500).json({message:errMessage});
+    }
+});
+
+router.post('/addmass',async (req,res)=>{
+    try{
+        const usersData = req.body;
+
+        if (!Array.isArray(usersData) || usersData.length === 0) {
+            return res.status(400).json({ message: "Request body must be a non-empty array of users." });
+        }
+
+        for (let user of usersData) {
+            const { name, username, email } = user;
+            if (!name || !username || !email) {
+                return res.status(400).json({ message: "Each user must have name, username, and email." });
+            }
+        }
+
+        const newUsers = await User.insertMany(usersData, {ordered:false});
+
+        res.status(201).json({
+            message: `${newUsers.length} users added successfully`,
+            users: newUsers
+        });
+    }
+    catch(err){
+        let errMessage="could not add mass users"+err.message;
         res.status(500).json({message:errMessage});
     }
 });
@@ -51,11 +80,7 @@ router.get('/:id',async(req,res)=>{
 })
 
 // module.exports=router;//after this plugged in this router to the server.js
-
-
-
-
-
+// module.exports=router;//after this plugged in this router to the server.js
 
 /*This users.js file creates the respective routes a person has to visit in order to: 
 1)get the full list of users(nodes) and 
