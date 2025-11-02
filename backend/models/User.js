@@ -3,7 +3,7 @@
 seperate schema defining folder for the posts and we will later link it to the user
 */
 const mongoose=require('mongoose');
-const post = require('Post');
+const Post = require('./Post');
 //each user will have name, username, numOfPosts(later), an intro 
 const userSchema=new mongoose.Schema({
     name:{
