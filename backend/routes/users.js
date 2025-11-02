@@ -67,20 +67,19 @@ router.get('/',async(req,res)=>{
 
 
 //loading the user using the id given by MongoDB
-
-router.get('/:id', async (req, res) => {
-    const { id } = req.params;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-        return res.status(400).json({ message: "Invalid user ID" });
+router.get('/:id',async(req,res)=>{
+    try{
+        let id1=req.params.id;
+        const thisUser=await User.findById(id1);
+        res.json(thisUser);
     }
+    catch(err){
+        let errMessage="could not load user data "+err.message;
+        res.status(500).json({message:errMessage});
+    }
+})
 
-    const user = await User.findById(id);
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    res.json(user);
-});
-
+// module.exports=router;//after this plugged in this router to the server.js
 // module.exports=router;//after this plugged in this router to the server.js
 
 /*This users.js file creates the respective routes a person has to visit in order to: 
