@@ -1,21 +1,31 @@
 const mongoose=require('mongoose');
 const express=require('express');
 const cors=require('cors');
-require('dotenv').config();//creates the process.env global variable 
+const dotenv = require("dotenv");
+dotenv.config();
+
+
 const app=express();
+
+app.use(cors());
 
 app.use(express.json());
 //mongoose.connect promise return karta hai. 
 //toh ek async function bana diye aur jab tak connection na ho jaaye tab tak wait kar liye
-async function mongooseConnection(){
-    try{
-        await mongoose.connect(process.env.MONGO_URI);
-        console.log("connection established");
-    }
-    catch{
-        console.log("failed");
-    }
+async function mongooseConnection() {
+  try {
+    console.log("Connecting to MongoDB...");
+    await mongoose.connect(process.env.MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log(" MongoDB connection established");
+  } catch (err) { // added (err) here
+    console.error(" MongoDB connection failed:");
+    console.error(err); 
+  }
 }
+
 mongooseConnection();
 
 app.get('/',(req,res)=>{
