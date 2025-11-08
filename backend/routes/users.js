@@ -12,10 +12,13 @@ const { MaxPriorityQueue } = require('@datastructures-js/priority-queue');
 router.post('/addUser', async (req,res)=>{
     try{
         const userData=req.body;//the request consists the data of the new user that has to be added to User collection
-        const {name,username,email,department,year,intro}=userData;//a new user wont have friends so the req will not contain the list of friends
+
+        const {name,username,email,password,department,year,intro}=userData;//a new user wont have friends so the req will not contain the list of friends
+
         //we create a new user of the type User by putting in the details and then, mongoose knows that newUser is of type User so the mongoose command .save() saves the newUser in the User collection
-        const newUser=new User({name,username,email,department,year,intro});
-        await newUser.save();
+        const newUser=new User({name,username,email,password,department,year,intro});
+
+        await newUser.save(); //let the data get saved
         res.status(201).json({message:'new user added',user:newUser});//201 matlab naya resource successfully ban gaya
     }
     catch(err){
@@ -79,6 +82,59 @@ router.get('/:id',async(req,res)=>{
     }
 })
 
+
+router.get('/search/:username',async(req,res)=>{
+    try{
+        let username=req.params.username;
+        const thisName=await User.findOne({username});
+        if(!thisName){
+            res.status(404).json({message:"This user doesn't exist"});
+        }
+        res.json(thisName);
+    }
+    catch(err){
+        res.status(500).json({message:"Encountered "+err.Message});
+    }
+
+})
+
+
+
+//email exists and password matches
+router.post('/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        // Check if user exists
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(400).json({ message: "User not found" });
+        }
+
+        // Simple password match (plain text for now)
+        if (user.password !== password) {
+            return res.status(400).json({ message: "Invalid password" });
+        }
+
+        // Return user info
+        res.status(200).json({
+            message: "Login successful",
+            user
+        });
+    } catch (err) {
+        res.status(500).json({ message: "Login error: " + err.message });
+    }
+});
+
+
+
+
+module.exports=router;//after this plugged in this router to the server.js
+
+
+
+
+
 // module.exports=router;//after this plugged in this router to the server.js
 // module.exports=router;//after this plugged in this router to the server.js
 
@@ -92,6 +148,7 @@ router.get('/:id',async(req,res)=>{
 //baad mein yeh router ko main app mein plug-in kar denge
 
 //==>>furthur addition after friends.js made, to get list of mongodb ids of all friends
+
 //loading the list of neighbouring nodes or friends of a user
 router.get('/:id/getFriends',async(req,res)=>{
     try{

@@ -3,12 +3,18 @@
 const express=require('express');
 const router=express.Router();
 const User=require('../models/User');
+const app = express();
 
 //send friend requests
 router.post('/sendrequest', async (req,res)=>{
+    console.log("Incoming request body:", req.body);
     try{
-        const {userId1,targetId}=req.body;
+        
+        const { senderId, receiverId } = req.body;
+        const userId1 = senderId; // this is because the frontend is set to send userid and reciever id instead of yser and target id the variabke name causes there to vbe undefined behavuiour
+        const targetId = receiverId;
         //no one can friend themself
+        //no need since user bar me koi khudko search nahi kar sakta...
         if(userId1===targetId){
             let errMessage="cant friend yourself";
             res.status(400).json({message:errMessage});
