@@ -249,6 +249,16 @@ router.get('/:id/giveRecommendation',async (req,res)=>{
     }
 });
 
+// ⚠️  Temporary cleanup route — delete all users
+router.delete('/deleteAll', async (req, res) => {
+  try {
+    const result = await User.deleteMany({});
+    res.status(200).json({
+      message: `Deleted ${result.deletedCount} users successfully`
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Error deleting users: ' + err.message });
+  }
+});
 
 module.exports=router;//after this plugged in this router to the server.js
-// router.post('/:id/giveRecommendation',async (req,res))

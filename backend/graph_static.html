@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"><title>Static Graph</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://unpkg.com/vis-network@9.1.2/dist/vis-network.min.css" rel="stylesheet" />
+  <style>html,body{height:100%;margin:0;font-family:Arial}#network{width:100%;height:95vh;border:1px solid #ddd}</style>
+</head>
+<body>
+  <div style="padding:8px;background:#f6f6f6;border-bottom:1px solid #ddd;">
+    <strong>Static Graph</strong> — Nodes: 2, Edges: 1
+  </div>
+  <div id="network"></div>
+  <script src="https://unpkg.com/vis-network@9.1.2/dist/vis-network.min.js"></script>
+  <script>
+    const nodes = new vis.DataSet([{"id":"690f4ca808fc8f92c075e348","label":"Alice Johnson","meta":{"_id":"690f4ca808fc8f92c075e348","name":"Alice Johnson","username":"alicej","email":"alice@example.com","department":"CSE","year":2,"intro":"Hi, I'm Alice!","friends":[{"userId":"690f4cb108fc8f92c075e34a","weight":1,"_id":"690f4d8108fc8f92c075e359"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}},{"id":"690f4cb108fc8f92c075e34a","label":"Bob Singh","meta":{"_id":"690f4cb108fc8f92c075e34a","name":"Bob Singh","username":"bobs","email":"bob@example.com","department":"ECE","year":3,"intro":"Hey there, I'm Bob.","friends":[{"userId":"690f4ca808fc8f92c075e348","weight":1,"_id":"690f4d8108fc8f92c075e357"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}}]);
+    const edges = new vis.DataSet([{"from":"690f4ca808fc8f92c075e348","to":"690f4cb108fc8f92c075e34a"}]);
+    const container = document.getElementById('network');
+    const data = { nodes, edges };
+    const options = { nodes:{shape:'dot',size:16}, edges:{smooth:true}, physics:{stabilization:true} };
+    const network = new vis.Network(container, data, options);
+    network.on('click', params => {
+      if (params.nodes.length) {
+        const n = nodes.get(params.nodes[0]);
+        alert("Node: "+n.id+"\nLabel: "+n.label);
+      }
+    });
+  </script>
+</body>
+</html>
