@@ -24,6 +24,17 @@ async function mongooseConnection() {
     console.error(" MongoDB connection failed:");
     console.error(err); 
   }
+async function mongooseConnection(){
+    try{
+        await mongoose.connect(process.env.MONGO_URI,{
+          useNewUrlParser: true,
+          useUnifiedTopology: true,
+        });
+        console.log("connection established");
+    }
+    catch(err){
+        console.log("failed"+err.message);
+    }
 }
 
 mongooseConnection();
@@ -48,3 +59,7 @@ const userRoutes=require('./routes/users');
 app.use('/api/users',userRoutes);
 const friendRoutes=require('./routes/friends');
 app.use('/api/friends',friendRoutes);
+const postRoutes=require('./routes/posts');
+app.use('/api/posts',postRoutes);
+const chatRoutes = require("./routes/chats");
+app.use("/api/chats", chatRoutes);
