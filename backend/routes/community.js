@@ -2,7 +2,7 @@ const express=require('express');
 const User=require('../models/User');
 const router=express.Router();
 
-const threshold=3;
+const threshold=8;
 //using dfs to explore connected user and create communities
 function dfs(userId,graph,visited,currentCommunity){
     visited.add(userId);
@@ -10,7 +10,7 @@ function dfs(userId,graph,visited,currentCommunity){
     const neighbours=graph[userId]||[];
 
     for (const neighbour of neighbours){
-        if (!visited.has(neighbour.friendId)&&neighbour.weight>=threshold){
+        if (!visited.has(neighbour.friendId)&&neighbour.weight<=threshold){
             dfs(neighbour.friendId,graph,visited,currentCommunity);
         }
     }
