@@ -84,14 +84,18 @@ let msfFinder=async function(){
         const IdEdge=[node1Id,node2Id];
         return IdEdge;
     });
-    return msfIdWise;
+    return {edges:msfIdWise,userList};
 }
 
 
 router.get('/msf', async (req,res)=>{
     try{
-        const edges=await msfFinder();
-        res.status(200).json({message:"msf generated: ",msf:edges});
+        const {edges,userList}=await msfFinder();
+        const allNodes = userList.map(user => ({
+                id: user._id.toString(),
+                label: user.username
+            }));
+        res.status(200).json({message:"msf generated: ",msfNodes:allNodes,msfEdges:edges});
     }
     catch(err){
         errMessage="error generating msf"+err.message;

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MSF Graph Visualizer</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
+    <style>
+        #network {
+            width: 100%;
+            height: 90vh;
+            border: 1px solid #aaa;
+        }
+        body {
+            margin: 0;
+            font-family: Arial;
+        }
+    </style>
+</head>
+<body>
+
+<h2 style="text-align:center;">Minimum Spanning Forest (Static View)</h2>
+<div id="network"></div>
+
+<script>
+    // 🚀 Update this to your actual backend URL:
+    const API_URL = "http://localhost:5000/api/vis/msf"; 
+    // If PORT is different, change 5000 to process.env.PORT value.
+
+    async function loadMSF() {
+        try {
+            const response = await fetch(API_URL);
+            const data = await response.json();
+
+            const msfNodes = data.msfNodes;
+            const msfEdges = data.msfEdges;
+
+            // ---- Convert edges to vis format ----
+            const edges = msfEdges.map(edge => ({
+                from: edge[0],
+                to: edge[1],
+                color: { color: "#444" },
+                width: 2
+            }));
+
+            const nodes = new vis.DataSet(msfNodes);
+
+            const container = document.getElementById("network");
+            const graphData = { nodes: nodes, edges: edges };
+
+            const options = {
+                interaction: {
+                    dragNodes: false,
+                    dragView: false,
+                    zoomView: false,
+                    selectable: false,
+                    hover: false,
+                    keyboard: false
+                },
+                physics: {
+                    enabled: true,
+                    solver: "forceAtlas2Based",
+                    forceAtlas2Based: {
+                        gravitationalConstant: -30,
+                        centralGravity: 0.001,
+                        springLength: 160,
+                        springConstant: 0.07
+                    }
+                },
+                nodes: {
+                    shape: "dot",
+                    size: 18,
+                    borderWidth: 2,
+                    color: {
+                        border: "#333",
+                        background: "#7bc7ff"
+                    },
+                    font: { size: 16 }
+                },
+                edges: {
+                    smooth: true,
+                    color: { color: "#333" }
+                }
+            };
+
+            new vis.Network(container, graphData, options);
+
+        } catch (err) {
+            console.error("Error loading MSF:", err);
+            alert("Error loading MSF. Check console for details.");
+        }
+    }
+
+    // Automatically load MSF when page loads
+    loadMSF();
+</script>
+
+</body>
+</html>
