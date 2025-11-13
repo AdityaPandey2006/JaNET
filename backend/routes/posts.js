@@ -312,7 +312,6 @@ router.get('/:postId/likes', async (req, res) => {
         const liked = userId && mongoose.isValidObjectId(userId) && Array.isArray(post.likedBy)
         ? post.likedBy.some(id => String(id) === String(userId)) : undefined;
 
-        // If we fetched likedBy just to check user-specific like, don't return whole array
         return res.status(200).json({ likes: post.likes, liked });
     } catch (err) {
         console.error("Error getting likes:", err);

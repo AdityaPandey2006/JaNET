@@ -27,6 +27,20 @@ async function mongooseConnection() {
 }
 
 /*  
+
+// async function mongooseConnection() {
+//   try {
+//     console.log("Connecting to MongoDB...");
+//     await mongoose.connect(process.env.MONGO_URI, {
+//       useNewUrlParser: true,
+//       useUnifiedTopology: true,
+//     });
+//     console.log(" MongoDB connection established");
+//   } catch (err) { // added (err) here
+//     console.error(" MongoDB connection failed:");
+//     console.error(err); 
+//   }
+// }
 async function mongooseConnection(){
     try{
         await mongoose.connect(process.env.MONGO_URI,{
@@ -35,11 +49,25 @@ async function mongooseConnection(){
         });
         console.log("connection established");
     }
-    catch(err){
-        console.log("failed"+err.message);
+    catch (err) { // added (err) here
+        console.error(" MongoDB connection failed:");
+        console.error(err); 
+    }
+    async function mongooseConnection(){
+        try{
+            await mongoose.connect(process.env.MONGO_URI,{
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+            });
+            console.log("connection established");
+        }
+        catch(err){
+            console.log("failed"+err.message);
+        }
     }
 }
 */
+}
 
 mongooseConnection();
 
@@ -69,3 +97,7 @@ const chatRoutes = require("./routes/chats");
 app.use("/api/chats", chatRoutes);
 const communityRoutes = require("./routes/community");
 app.use("/api/community",communityRoutes);
+// const chatRoutes = require('./routes/chats');
+// app.use('/api/chats', chatRoutes);
+const msfRoutes = require('./routes/visualisers');
+app.use('/api/vis', msfRoutes);
