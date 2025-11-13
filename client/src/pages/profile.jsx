@@ -8,7 +8,6 @@ const Profile = () => {
   const [posts, setPosts] = useState([]);
   const [loadingPosts, setLoadingPosts] = useState(false);
 
-  // 🔹 Load user data from localStorage
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
@@ -23,7 +22,6 @@ const Profile = () => {
     }
   }, []);
 
-  // 🔹 Fetch all posts for the user
   const getAllPosts = async () => {
     if (!user?._id) {
       console.error("User ID missing — cannot load posts");
@@ -42,22 +40,22 @@ const Profile = () => {
       }
 
       setPosts(data.posts || []);
-      console.log("✅ Posts loaded:", data.posts);
+      console.log(" Posts loaded:", data.posts);
     } catch (err) {
-      console.error("❌ Failed to load posts:", err.message);
+      console.error(" Failed to load posts:", err.message);
     } finally {
       setLoadingPosts(false);
     }
   };
 
-  // 🔹 Automatically load posts when user data is ready
+  //  Automatically load posts when user data is ready
   useEffect(() => {
     if (user?._id) {
       getAllPosts();
     }
   }, [user]);
 
-  // 🔹 Show loading screen until user data is ready
+  // Show loading screen until user data is ready
   if (!user) {
     return (
       <div className="flex items-center justify-center h-screen">
