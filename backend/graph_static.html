@@ -1,28 +1,179 @@
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8"><title>Static Graph</title>
+  <meta charset="utf-8"><title>Interactive Graph</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://unpkg.com/vis-network@9.1.2/dist/vis-network.min.css" rel="stylesheet" />
-  <style>html,body{height:100%;margin:0;font-family:Arial}#network{width:100%;height:95vh;border:1px solid #ddd}</style>
+  <style>
+    html,body{height:100%;margin:0;font-family:Arial}
+    #network{width:100%;height:80vh;border:1px solid #ddd}
+    #controls{padding:8px;background:#f6f6f6;border-bottom:1px solid #ddd}
+    #legend{position:fixed;right:12px;bottom:12px;background:#fff;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px}
+  </style>
 </head>
 <body>
-  <div style="padding:8px;background:#f6f6f6;border-bottom:1px solid #ddd;">
-    <strong>Static Graph</strong> — Nodes: 2, Edges: 1
+  <div id="controls">
+    <strong>Interactive Graph</strong>
+    &nbsp; &nbsp; Nodes: 20, Edges: 24
+    &nbsp; &nbsp; Start ID: <select id="start" style="width:300px"></select>
+    &nbsp; Target ID: <select id="target" style="width:300px"></select>
+    &nbsp; <button id="find">Find shortest path</button>
+    &nbsp; &nbsp; <button id="reset">Reset</button>
+    <span id="status" style="margin-left:12px;color:#333"></span>
   </div>
   <div id="network"></div>
+  <div id="legend">
+    <div style="display:flex;align-items:center;"><div style="width:12px;height:12px;background:#4c72b0;border-radius:50%;margin-right:8px"></div>Normal</div>
+    <div style="display:flex;align-items:center;margin-top:6px"><div style="width:12px;height:12px;background:#ff7f0e;border-radius:50%;margin-right:8px"></div>Path node</div>
+    <div style="display:flex;align-items:center;margin-top:6px"><div style="width:20px;height:4px;background:#d62728;margin-right:8px"></div>Path edge</div>
+  </div>
+
   <script src="https://unpkg.com/vis-network@9.1.2/dist/vis-network.min.js"></script>
   <script>
-    const nodes = new vis.DataSet([{"id":"690f4ca808fc8f92c075e348","label":"Alice Johnson","meta":{"_id":"690f4ca808fc8f92c075e348","name":"Alice Johnson","username":"alicej","email":"alice@example.com","department":"CSE","year":2,"intro":"Hi, I'm Alice!","friends":[{"userId":"690f4cb108fc8f92c075e34a","weight":1,"_id":"690f4d8108fc8f92c075e359"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}},{"id":"690f4cb108fc8f92c075e34a","label":"Bob Singh","meta":{"_id":"690f4cb108fc8f92c075e34a","name":"Bob Singh","username":"bobs","email":"bob@example.com","department":"ECE","year":3,"intro":"Hey there, I'm Bob.","friends":[{"userId":"690f4ca808fc8f92c075e348","weight":1,"_id":"690f4d8108fc8f92c075e357"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}}]);
-    const edges = new vis.DataSet([{"from":"690f4ca808fc8f92c075e348","to":"690f4cb108fc8f92c075e34a"}]);
+    const API_BASE = "http://localhost:5000";
+    const nodes = new vis.DataSet([{"id":"000000000000000000000001","label":"Aarav Mehta","meta":{"_id":"000000000000000000000001","name":"Aarav Mehta","username":"aarav","email":"aarav@example.com","password":"pass","department":"CS","year":3,"intro":"Hi, I'm Aarav!","friends":[{"userId":"000000000000000000000002","weight":1,"_id":"6914c3401ca569407a73f0a7"},{"userId":"000000000000000000000005","weight":1,"_id":"6914c3401ca569407a73f0a8"},{"userId":"000000000000000000000006","weight":1,"_id":"6914c3401ca569407a73f0a9"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}},{"id":"000000000000000000000002","label":"Isha Patel","meta":{"_id":"000000000000000000000002","name":"Isha Patel","username":"isha","email":"isha@example.com","password":"pass","department":"ECE","year":2,"intro":"Hey there!","friends":[{"userId":"000000000000000000000001","weight":1,"_id":"6914c3401ca569407a73f0ab"},{"userId":"000000000000000000000003","weight":1,"_id":"6914c3401ca569407a73f0ac"},{"userId":"000000000000000000000007","weight":1,"_id":"6914c3401ca569407a73f0ad"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}},{"id":"000000000000000000000003","label":"Rohan Sharma","meta":{"_id":"000000000000000000000003","name":"Rohan Sharma","username":"rohan","email":"rohan@example.com","password":"pass","department":"IT","year":4,"intro":"Love coding and design.","friends":[{"userId":"000000000000000000000002","weight":1,"_id":"6914c3401ca569407a73f0af"},{"userId":"000000000000000000000004","weight":1,"_id":"6914c3401ca569407a73f0b0"},{"userId":"000000000000000000000008","weight":1,"_id":"6914c3401ca569407a73f0b1"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}},{"id":"000000000000000000000004","label":"Neha Kapoor","meta":{"_id":"000000000000000000000004","name":"Neha Kapoor","username":"neha","email":"neha@example.com","password":"pass","department":"CS","year":3,"intro":"Exploring AI and ML.","friends":[{"userId":"000000000000000000000003","weight":1,"_id":"6914c3401ca569407a73f0b3"},{"userId":"000000000000000000000009","weight":1,"_id":"6914c3401ca569407a73f0b4"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}},{"id":"000000000000000000000005","label":"Kabir Singh","meta":{"_id":"000000000000000000000005","name":"Kabir Singh","username":"kabir","email":"kabir@example.com","password":"pass","department":"ME","year":4,"intro":"Mechanical engineer in progress.","friends":[{"userId":"000000000000000000000001","weight":1,"_id":"6914c3401ca569407a73f0b6"},{"userId":"000000000000000000000010","weight":1,"_id":"6914c3401ca569407a73f0b7"},{"userId":"000000000000000000000011","weight":1,"_id":"6914c3401ca569407a73f0b8"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}},{"id":"000000000000000000000006","label":"Sanya Khanna","meta":{"_id":"000000000000000000000006","name":"Sanya Khanna","username":"sanya","email":"sanya@example.com","password":"pass","department":"CS","year":1,"intro":"Love frontend dev.","friends":[{"userId":"000000000000000000000001","weight":1,"_id":"6914c3401ca569407a73f0ba"},{"userId":"000000000000000000000012","weight":1,"_id":"6914c3401ca569407a73f0bb"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}},{"id":"000000000000000000000007","label":"Devansh Nair","meta":{"_id":"000000000000000000000007","name":"Devansh Nair","username":"devansh","email":"devansh@example.com","password":"pass","department":"CS","year":2,"intro":"Backend enthusiast.","friends":[{"userId":"000000000000000000000002","weight":1,"_id":"6914c3401ca569407a73f0bd"},{"userId":"000000000000000000000013","weight":1,"_id":"6914c3401ca569407a73f0be"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}},{"id":"000000000000000000000008","label":"Priya Reddy","meta":{"_id":"000000000000000000000008","name":"Priya Reddy","username":"priya","email":"priya@example.com","password":"pass","department":"IS","year":3,"intro":"Data is my passion.","friends":[{"userId":"000000000000000000000003","weight":1,"_id":"6914c3401ca569407a73f0c0"},{"userId":"000000000000000000000014","weight":1,"_id":"6914c3401ca569407a73f0c1"},{"userId":"000000000000000000000015","weight":1,"_id":"6914c3401ca569407a73f0c2"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}},{"id":"000000000000000000000009","label":"Vikram Joshi","meta":{"_id":"000000000000000000000009","name":"Vikram Joshi","username":"vikram","email":"vikram@example.com","password":"pass","department":"CE","year":5,"intro":"Civil engineer.","friends":[{"userId":"000000000000000000000004","weight":1,"_id":"6914c3401ca569407a73f0c4"},{"userId":"000000000000000000000016","weight":1,"_id":"6914c3401ca569407a73f0c5"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}},{"id":"000000000000000000000010","label":"Ananya Iyer","meta":{"_id":"000000000000000000000010","name":"Ananya Iyer","username":"ananya","email":"ananya@example.com","password":"pass","department":"CS","year":3,"intro":"Loves UI design.","friends":[{"userId":"000000000000000000000005","weight":1,"_id":"6914c3401ca569407a73f0c7"},{"userId":"000000000000000000000017","weight":1,"_id":"6914c3401ca569407a73f0c8"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}},{"id":"000000000000000000000011","label":"Manav Rao","meta":{"_id":"000000000000000000000011","name":"Manav Rao","username":"manav","email":"manav@example.com","password":"pass","department":"ECE","year":4,"intro":"Electronics geek.","friends":[{"userId":"000000000000000000000005","weight":1,"_id":"6914c3401ca569407a73f0ca"},{"userId":"000000000000000000000018","weight":1,"_id":"6914c3401ca569407a73f0cb"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}},{"id":"000000000000000000000012","label":"Meera Das","meta":{"_id":"000000000000000000000012","name":"Meera Das","username":"meera","email":"meera@example.com","password":"pass","department":"CS","year":1,"intro":"Just getting started!","friends":[{"userId":"000000000000000000000006","weight":1,"_id":"6914c3401ca569407a73f0cd"},{"userId":"000000000000000000000019","weight":1,"_id":"6914c3401ca569407a73f0ce"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}},{"id":"000000000000000000000013","label":"Tanishq Bhatia","meta":{"_id":"000000000000000000000013","name":"Tanishq Bhatia","username":"tanishq","email":"tanishq@example.com","password":"pass","department":"ME","year":5,"intro":"Working on robotics.","friends":[{"userId":"000000000000000000000007","weight":1,"_id":"6914c3401ca569407a73f0d0"},{"userId":"000000000000000000000020","weight":1,"_id":"6914c3401ca569407a73f0d1"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}},{"id":"000000000000000000000014","label":"Ritika Malhotra","meta":{"_id":"000000000000000000000014","name":"Ritika Malhotra","username":"ritika","email":"ritika@example.com","password":"pass","department":"IS","year":4,"intro":"AI/ML learner.","friends":[{"userId":"000000000000000000000008","weight":1,"_id":"6914c3401ca569407a73f0d3"},{"userId":"000000000000000000000019","weight":1,"_id":"6914c3401ca569407a73f0d4"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}},{"id":"000000000000000000000015","label":"Aditya Verma","meta":{"_id":"000000000000000000000015","name":"Aditya Verma","username":"aditya","email":"aditya@example.com","password":"pass","department":"CS","year":4,"intro":"CS senior, loves C++.","friends":[{"userId":"000000000000000000000008","weight":1,"_id":"6914c3401ca569407a73f0d6"},{"userId":"000000000000000000000016","weight":1,"_id":"6914c3401ca569407a73f0d7"},{"userId":"000000000000000000000018","weight":1,"_id":"6914c3401ca569407a73f0d8"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}},{"id":"000000000000000000000016","label":"Sneha Pillai","meta":{"_id":"000000000000000000000016","name":"Sneha Pillai","username":"sneha","email":"sneha@example.com","password":"pass","department":"IT","year":3,"intro":"Interested in networks.","friends":[{"userId":"000000000000000000000009","weight":1,"_id":"6914c3401ca569407a73f0da"},{"userId":"000000000000000000000015","weight":1,"_id":"6914c3401ca569407a73f0db"},{"userId":"000000000000000000000019","weight":1,"_id":"6914c3401ca569407a73f0dc"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}},{"id":"000000000000000000000017","label":"Karan Gupta","meta":{"_id":"000000000000000000000017","name":"Karan Gupta","username":"karan","email":"karan@example.com","password":"pass","department":"CS","year":5,"intro":"DevOps student.","friends":[{"userId":"000000000000000000000010","weight":1,"_id":"6914c3401ca569407a73f0de"},{"userId":"000000000000000000000020","weight":1,"_id":"6914c3401ca569407a73f0df"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}},{"id":"000000000000000000000018","label":"Simran Gill","meta":{"_id":"000000000000000000000018","name":"Simran Gill","username":"simran","email":"simran@example.com","password":"pass","department":"ECE","year":2,"intro":"Electronics lover.","friends":[{"userId":"000000000000000000000011","weight":1,"_id":"6914c3401ca569407a73f0e1"},{"userId":"000000000000000000000015","weight":1,"_id":"6914c3401ca569407a73f0e2"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}},{"id":"000000000000000000000019","label":"Arjun Banerjee","meta":{"_id":"000000000000000000000019","name":"Arjun Banerjee","username":"arjun","email":"arjun@example.com","password":"pass","department":"ME","year":1,"intro":"Building things is fun!","friends":[{"userId":"000000000000000000000012","weight":1,"_id":"6914c3401ca569407a73f0e4"},{"userId":"000000000000000000000014","weight":1,"_id":"6914c3401ca569407a73f0e5"},{"userId":"000000000000000000000016","weight":1,"_id":"6914c3401ca569407a73f0e6"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}},{"id":"000000000000000000000020","label":"Diya Chatterjee","meta":{"_id":"000000000000000000000020","name":"Diya Chatterjee","username":"diya","email":"diya@example.com","password":"pass","department":"IS","year":3,"intro":"IS student, loves teamwork.","friends":[{"userId":"000000000000000000000013","weight":1,"_id":"6914c3401ca569407a73f0e8"},{"userId":"000000000000000000000017","weight":1,"_id":"6914c3401ca569407a73f0e9"}],"friendRequests":[],"sentRequests":[],"Posts":[],"__v":0}}]);
+    const edges = new vis.DataSet([{"from":"000000000000000000000001","to":"000000000000000000000002"},{"from":"000000000000000000000001","to":"000000000000000000000005"},{"from":"000000000000000000000001","to":"000000000000000000000006"},{"from":"000000000000000000000002","to":"000000000000000000000003"},{"from":"000000000000000000000002","to":"000000000000000000000007"},{"from":"000000000000000000000003","to":"000000000000000000000004"},{"from":"000000000000000000000003","to":"000000000000000000000008"},{"from":"000000000000000000000004","to":"000000000000000000000009"},{"from":"000000000000000000000005","to":"000000000000000000000010"},{"from":"000000000000000000000005","to":"000000000000000000000011"},{"from":"000000000000000000000006","to":"000000000000000000000012"},{"from":"000000000000000000000007","to":"000000000000000000000013"},{"from":"000000000000000000000008","to":"000000000000000000000014"},{"from":"000000000000000000000008","to":"000000000000000000000015"},{"from":"000000000000000000000009","to":"000000000000000000000016"},{"from":"000000000000000000000010","to":"000000000000000000000017"},{"from":"000000000000000000000011","to":"000000000000000000000018"},{"from":"000000000000000000000012","to":"000000000000000000000019"},{"from":"000000000000000000000013","to":"000000000000000000000020"},{"from":"000000000000000000000014","to":"000000000000000000000019"},{"from":"000000000000000000000015","to":"000000000000000000000016"},{"from":"000000000000000000000015","to":"000000000000000000000018"},{"from":"000000000000000000000016","to":"000000000000000000000019"},{"from":"000000000000000000000017","to":"000000000000000000000020"}]);
+
+    // explicit default color so we can reliably restore it later
+    const DEFAULT_NODE_COLOR = { background: '#4c72b0', border: '#2c5d9e' };
+    nodes.update(nodes.get().map(n => ({ id: n.id, color: DEFAULT_NODE_COLOR })));
+
     const container = document.getElementById('network');
     const data = { nodes, edges };
-    const options = { nodes:{shape:'dot',size:16}, edges:{smooth:true}, physics:{stabilization:true} };
+    const options = { nodes:{shape:'dot',size:16}, edges:{smooth:true, color:'#999'}, physics:{stabilization:true} };
     const network = new vis.Network(container, data, options);
+
+    (function ensureEdgeIds() {
+      const allE = edges.get();
+      const updates = allE.map(e => ({ id: e.id || (e.from + '|' + e.to), from: e.from, to: e.to }));
+      edges.update(updates);
+    })();
+
+    let lastPath = null;
+    let tempEdgeIds = [];
+
+    function resetStyles() {
+      if (typeof network !== 'undefined' && network && typeof network.unselectAll === 'function') {
+        try { network.unselectAll(); } catch (e) { }
+      }
+
+      for (const teid of tempEdgeIds) {
+        try { edges.remove(teid); } catch (e) { }
+      }
+      tempEdgeIds = [];
+
+      const allNodes = nodes.get();
+      const nodeUpdates = allNodes.map(n => ({ id: n.id, color: DEFAULT_NODE_COLOR }));
+      nodes.update(nodeUpdates);
+
+      const allEdges = edges.get();
+      const edgeUpdates = allEdges.map(e => ({ id: e.id, color: { color: '#999' }, width: 1 }));
+      edges.update(edgeUpdates);
+
+      document.getElementById('status').innerText = '';
+      lastPath = null;
+    }
+
+    function highlightPath(path) {
+      resetStyles();
+      if (!path || path.length === 0) {
+        document.getElementById('status').innerText = 'No path';
+        return;
+      }
+      lastPath = path.slice();
+
+      // color only the path nodes
+      const nodeUpdates = path.map(id => ({ id: id, color: { background: '#ff7f0e', border: '#b35506' } }));
+      nodes.update(nodeUpdates);
+
+      // color only edges that connect consecutive path nodes
+      for (let i = 0; i < path.length - 1; i++) {
+        const a = path[i], b = path[i+1];
+        const allE = edges.get();
+        const match = allE.find(e => (e.from === a && e.to === b) || (e.from === b && e.to === a));
+        if (match) {
+          edges.update({ id: match.id, color: { color: '#d62728' }, width: 3 });
+        } else {
+          const newid = 'p|' + a + '|' + b;
+          if (!edges.get(newid)) {
+            edges.add({ id: newid, from: a, to: b, color: { color: '#d62728' }, width: 3 });
+            tempEdgeIds.push(newid);
+          } else {
+            edges.update({ id: newid, color: { color: '#d62728' }, width: 3 });
+          }
+        }
+      }
+
+      document.getElementById('status').innerText = 'Path length: ' + (path.length - 1) + ' hops';
+      try { network.fit({ nodes: path, animation: true }); } catch (e) { }
+    }
+
+    function populateNodeSelects() {
+      const all = nodes.get().slice().sort((a,b) => (a.label||a.id).localeCompare(b.label||b.id));
+      const startSel = document.getElementById('start');
+      const targetSel = document.getElementById('target');
+      startSel.innerHTML = '';
+      targetSel.innerHTML = '';
+      const emptyOpt = document.createElement('option');
+      emptyOpt.value = '';
+      emptyOpt.text = '-- pick node --';
+      startSel.appendChild(emptyOpt.cloneNode(true));
+      targetSel.appendChild(emptyOpt.cloneNode(true));
+      for (const n of all) {
+        const label = (n.label ? (n.label + ' — ') : '') + n.id;
+        const o1 = document.createElement('option');
+        o1.value = n.id;
+        o1.text = label;
+        const o2 = o1.cloneNode(true);
+        startSel.appendChild(o1);
+        targetSel.appendChild(o2);
+      }
+    }
+
+    populateNodeSelects();
+
+    document.getElementById('find').addEventListener('click', async () => {
+      const start = document.getElementById('start').value;
+      const target = document.getElementById('target').value;
+      if (!start || !target) {
+        alert('please choose both start and target nodes from the dropdowns');
+        return;
+      }
+      resetStyles();
+      document.getElementById('status').innerText = 'Searching...';
+      try {
+        const url = API_BASE + '/api/users/' + encodeURIComponent(start) + '/shortestpath?target=' + encodeURIComponent(target);
+        const resp = await fetch(url);
+        const txt = await resp.text();
+        let j = null;
+        try { j = JSON.parse(txt); } catch(e) { j = null; }
+        console.log('shortestpath response', resp.status, j || txt);
+        if (!resp.ok) {
+          document.getElementById('status').innerText = 'Server returned ' + resp.status;
+          alert('Server returned: ' + txt);
+          return;
+        }
+        const path = (j && j.path) ? j.path : [];
+        highlightPath(path);
+      } catch (err) {
+        document.getElementById('status').innerText = 'Request failed';
+        alert('Request failed: ' + err.message);
+        console.error('fetch shortestpath error', err);
+      }
+    });
+
+    document.getElementById('reset').addEventListener('click', resetStyles);
+
     network.on('click', params => {
+      // clicking empty space clears the highlight
+      if (params.nodes.length === 0 && lastPath) {
+        resetStyles();
+      }
       if (params.nodes.length) {
         const n = nodes.get(params.nodes[0]);
-        alert("Node: "+n.id+"\nLabel: "+n.label);
+        const meta = n.meta || {};
+        const label = n.label || n.id;
+        alert("Node: " + n.id + "\nLabel: " + label + "\nMeta:\n" + JSON.stringify(meta, null, 2));
       }
     });
   </script>
