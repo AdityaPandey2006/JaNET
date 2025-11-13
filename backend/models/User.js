@@ -41,7 +41,11 @@ const userSchema=new mongoose.Schema({
         },
         weight:{
             type:Number,
-            default: 1
+            default: 10
+        },
+        lastMessage:{
+            type:Date,
+            default: Date.now()
         }
 
     }

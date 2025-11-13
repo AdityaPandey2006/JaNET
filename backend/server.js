@@ -67,3 +67,5 @@ const postRoutes = require('./routes/posts');
 app.use('/api/posts',postRoutes);
 const chatRoutes = require("./routes/chats");
 app.use("/api/chats", chatRoutes);
+const communityRoutes = require("./routes/community");
+app.use("/api/community",communityRoutes);
