@@ -109,7 +109,7 @@ const Feed = () => {
 
         {!searchedUser && !error && (
           <div className="text-gray-500 text-center mt-8">
-            Start by searching for a user 👀
+            Start by searching for a user 
           </div>
         )}
       </div>

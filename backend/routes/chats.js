@@ -67,6 +67,7 @@ router.post("/send",async(req,res)=>{
         res.status(500).json({ error: "Server error" });
     }
 });
+
 router.get("/:userid1/:userid2",async(req,res)=>{
     try{
         const{userid1,userid2}=req.params;
