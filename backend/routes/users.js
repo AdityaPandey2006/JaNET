@@ -193,7 +193,7 @@ function findFriends(userid){
 }
 
 //get friend recommendations page using BFS
-router.get('/:id/friendrecommendations', async(req,res) => {
+router.get(' ', async(req,res) => {
     try{
         const userid = req.params.id;
 
@@ -224,11 +224,11 @@ async function friendGetter(userObj1){
         return friend.userId;
     })
     return friends;
-}
+}//helps us find the list of friends of a user
 
 let jaccardSim=function(friendsCountA,friendsCountB,mutualFriendsCount){
     return mutualFriendsCount/(friendsCountA+friendsCountB-mutualFriendsCount);//intersection/union
-}
+}//tells us how good a possible connection is between a particular user and a possible friend recommendation. Higher the jaccard similarity, better the friend recommendation
 
 router.get('/:id/giveRecommendation',async (req,res)=>{
     try{
@@ -294,6 +294,9 @@ router.get('/:id/giveRecommendation',async (req,res)=>{
         for(let i=0;i<maxRecc;i++){
             // let max=pq.dequeue;
             if(pq.isEmpty()) break;
+            // const actualReccObj=await User.findById(pq.front().id);
+            // const actualReccName=actualReccObj.name;
+            // actualRecommendations.push(actualReccName);
             actualRecommendations.push(pq.front());
             pq.dequeue();
         }

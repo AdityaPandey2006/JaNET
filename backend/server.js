@@ -24,6 +24,7 @@ async function mongooseConnection() {
     console.error(" MongoDB connection failed:");
     console.error(err); 
   }
+}
 async function mongooseConnection(){
     try{
         await mongoose.connect(process.env.MONGO_URI,{
@@ -65,3 +66,7 @@ const chatRoutes = require("./routes/chats");
 app.use("/api/chats", chatRoutes);
 const communityRoutes = require("./routes/community");
 app.use("/api/community",communityRoutes);
+// const chatRoutes = require('./routes/chats');
+// app.use('/api/chats', chatRoutes);
+const msfRoutes = require('./routes/visualisers');
+app.use('/api/vis', msfRoutes);
