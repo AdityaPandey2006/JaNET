@@ -24,6 +24,9 @@ async function mongooseConnection() {
     console.error(" MongoDB connection failed:");
     console.error(err); 
   }
+}
+
+/*  
 async function mongooseConnection(){
     try{
         await mongoose.connect(process.env.MONGO_URI,{
@@ -36,6 +39,7 @@ async function mongooseConnection(){
         console.log("failed"+err.message);
     }
 }
+*/
 
 mongooseConnection();
 

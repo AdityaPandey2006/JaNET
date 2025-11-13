@@ -2,10 +2,12 @@ import React, { useEffect, useState } from "react";
 
 const Connections = () => {
   const [pendingRequests, setPendingRequests] = useState([]);
-  const [recommended] = useState([]);
+  const [recommended, setRecommended] = useState([]);
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
 
+  // 🔹 Fetch Pending Requests
   useEffect(() => {
-    // Fetch pending friend requests for the logged-in user
     const fetchRequests = async () => {
       try {
         const storedUser = localStorage.getItem("user");
@@ -13,27 +15,29 @@ const Connections = () => {
 
         const { _id: userId1 } = JSON.parse(storedUser);
 
-        // backend route to get user data (assuming you already have it)
         const response = await fetch(`http://localhost:5000/api/users/${userId1}`);
         if (response.ok) {
           const data = await response.json();
-          // friendRequests will contain array of { requestsFrom: userId }
           setPendingRequests(data.friendRequests || []);
+        } else {
+          console.error("Failed to fetch friend requests");
         }
       } catch (err) {
         console.error("Error fetching requests:", err);
       }
     };
+
     fetchRequests();
   }, []);
 
+  // 🔹 Accept Friend Request
   const handleAccept = async (senderId) => {
     try {
       const storedUser = localStorage.getItem("user");
       if (!storedUser) return;
+
       const { _id: userId1 } = JSON.parse(storedUser);
 
-      // Backend call to accept friend request
       const response = await fetch("http://localhost:5000/api/friends/acceptrequest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -43,7 +47,6 @@ const Connections = () => {
       if (response.ok) {
         const data = await response.json();
         console.log("Friend accepted:", data);
-        // remove accepted request from list
         setPendingRequests((prev) =>
           prev.filter((req) => req.requestsFrom !== senderId)
         );
@@ -53,6 +56,71 @@ const Connections = () => {
       }
     } catch (err) {
       console.error("Error while accepting request:", err);
+    }
+  };
+
+  // 🔹 Fetch Friend Recommendations
+  const friend_recommendations = async () => {
+    try {
+      const storedUser = localStorage.getItem("user");
+      if (!storedUser) return;
+
+      const { _id: userId1 } = JSON.parse(storedUser);
+
+      // ✅ fixed URL (use backticks)
+      const response = await fetch(
+        `http://localhost:5000/api/users/${userId1}/giveRecommendation`,
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Friend recommendations:", data.recommendations);
+        setRecommended(data.recommendations || []);
+      } else {
+        throw new Error("Failed to fetch friend recommendations");
+      }
+    } catch (error) {
+      console.error("Error while getting friend recommendations:", error.message);
+    }
+  };
+
+   // 🔹 Fetch recommendations on mount
+  useEffect(() => {
+    friend_recommendations();
+  }, []);
+
+  const handleFriendRequest = async (receiverId) => {
+    try {
+      setError("");
+      setSuccess("");
+      const storedUser = localStorage.getItem("user");
+      if (!storedUser) return;
+      const { _id: senderId } = JSON.parse(storedUser); //declaring sender id and as the id of the user
+
+      console.log("Sender:", senderId, "Receiver:", receiverId);
+      const response = await fetch(
+        "http://localhost:5000/api/friends/sendrequest",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ senderId, receiverId }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || "Failed to send request");
+        return;
+      }
+
+      setSuccess("Friend request sent successfully!!!");
+    } catch (err) {
+      setError("Error sending friend request: " + err.message);
     }
   };
 
@@ -96,11 +164,35 @@ const Connections = () => {
           <h3 className="text-xl font-semibold text-gray-700 mb-4">
             Recommended Friends
           </h3>
+
           {recommended.length === 0 ? (
             <p className="text-gray-500 italic">No recommendations yet.</p>
           ) : (
-            <div>
-              {/* map over recommended later */}
+            <div className="space-y-4">
+              {recommended.map((rec, idx) => (
+                <div
+                  key={idx}
+                  className="flex justify-between items-center bg-gray-100 p-4 rounded-xl"
+                >
+                  <div>
+                    <p className="text-gray-800 font-medium">
+                      UserName: {rec.username}
+                    </p>
+                    <p className="text-gray-600 text-sm">
+                      Mutual Friends: {rec.mutual}
+                    </p>
+                    <p className="text-gray-600 text-sm">
+                      Similarity: {rec.sim.toFixed(2)}
+                    </p>
+                  </div>
+                  <button
+                    className="bg-blue-600 text-white px-4 py-1 rounded-lg hover:bg-blue-700"
+                    onClick={() => handleFriendRequest(rec.id)}
+                  >
+                    Add Friend
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </div>

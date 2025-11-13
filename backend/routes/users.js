@@ -287,7 +287,7 @@ router.get('/:id/giveRecommendation',async (req,res)=>{
                 }
             }
             let jaccSim=jaccardSim(friends.length,reccFriends.length,count);
-            pq.enqueue({sim:jaccSim,id:recc,mutual:count});
+            pq.enqueue({sim:jaccSim,id:recc,mutual:count,username: reccObj.username,});
 
         }
         let actualRecommendations=[];
@@ -306,7 +306,7 @@ router.get('/:id/giveRecommendation',async (req,res)=>{
     }
 });
 
-// ⚠️  Temporary cleanup route — delete all users
+//  Temporary cleanup route — delete all users
 router.delete('/deleteAll', async (req, res) => {
   try {
     const result = await User.deleteMany({});
