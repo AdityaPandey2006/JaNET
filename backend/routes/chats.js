@@ -9,7 +9,7 @@ async function UpdateWeight(userId,friendId) {
     const friend = user.friends.find((f) => f.userId.toString() === friendId);
     if(!friend) throw new Error("Users are not friends");
 
-    friend.weight=Math.min(friend.weight+0.5,10);
+    friend.weight=Math.max(friend.weight-0.5,1);
     friend.lastMessage=new Date();
     await user.save();
 }
@@ -92,8 +92,8 @@ setInterval(async() => {
             for (const friend of user.friends){
                 if (!friend.lastMessage) continue;
                 const minutesIdle=(Date.now()-friend.lastMessage)/60000;
-                if (minutesIdle>2&& friend.weight>2){
-                    friend.weight=Math.max(friend.weight-0.2,2);
+                if (minutesIdle>2&& friend.weight<9){
+                    friend.weight=Math.min(friend.weight+0.2,9);
                     changed=true;
                 }
             }
