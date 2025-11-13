@@ -106,5 +106,4 @@ setInterval(async() => {
     }    
 }, 120000);
 
-module.exports = router;
 module.exports=router;
