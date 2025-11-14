@@ -6,7 +6,8 @@ const threshold=8;
 //using dfs to explore connected user and create communities
 function dfs(userId,graph,visited,currentCommunity){
     visited.add(userId);
-    currentCommunity.push(userId);
+    userobj=User.findById(userId);
+    currentCommunity.push(userobj.name);
     const neighbours=graph[userId]||[];
 
     for (const neighbour of neighbours){
