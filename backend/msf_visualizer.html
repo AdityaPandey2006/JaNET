@@ -1,187 +1,177 @@
-<!-- <!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-    <title>STRONGEST UNDERLYING CONNECTION NETWORK</title>
-    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-
-    <style>
-        #network {
-            width: 100%;
-            height: 90vh;
-            border: 1px solid #aaa;
-        }
-        body {
-            margin: 0;
-            font-family: Arial;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MSF Visualizer — Minimum Spanning Forest (static, display only)</title>
+  <script src="https://unpkg.com/vis-network@9.1.2/dist/vis-network.min.js"></script>
+  <link href="https://unpkg.com/vis-network@9.1.2/dist/vis-network.min.css" rel="stylesheet" />
+  <style>
+    :root{--bg:#f7f7fb;--card:#ffffff;--muted:#6b7280}
+    html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Arial}
+    header{padding:12px 18px;background:#111827;color:#fff}
+    header small{display:block;opacity:0.85;margin-top:6px;font-weight:500}
+    .app{display:flex;gap:16px;padding:12px;height:calc(100% - 72px);box-sizing:border-box;background:var(--bg)}
+    .controls{width:340px;background:var(--card);padding:14px;border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,0.06);display:flex;flex-direction:column}
+    #network{flex:1;border-radius:10px;background:var(--card);box-shadow:0 8px 24px rgba(15,23,42,0.06);min-height:0}
+    label{font-size:13px;color:#111827;margin-top:10px}
+    select,input,button{width:100%;padding:9px;margin-top:6px;border-radius:8px;border:1px solid #e6edf3;font-size:14px}
+    .row{display:flex;gap:8px;margin-top:12px}
+    .row button{flex:1}
+    .tiny{font-size:12px;color:var(--muted);margin-top:10px}
+    .legend{margin-top:12px;font-size:13px}
+  </style>
 </head>
 <body>
-<h2 style="text-align:center;">STRONGEST UNDERLYING CONNECTION NETWORK</h2>
-<div id="network"></div>
-<script>
-    // const dotenv = require("dotenv");
-    // dotenv.config();
-    // const PORT=process.env.PORT||5000;//cant use this here because html file cannot read require imports
-    const API_URL = "http://localhost:5000/api/vis/msf"; 
-    async function loadMSF() {
-        try {
-            const response = await fetch(API_URL);
-            const data = await response.json();
-            const msfNodes = data.msfNodes;
-            const msfEdges = data.msfEdges;
-            const edges = msfEdges.map(edge => ({
-                from: edge[0],
-                to: edge[1],
-                color: { color: "#444" },
-                width: 2
-            }));
-            const nodes = new vis.DataSet(msfNodes);
-            const container = document.getElementById("network");
-            const graphData = { nodes: nodes, edges: edges };
-            const options = {
-                interaction: {
-                    dragNodes: false,
-                    dragView: false,
-                    zoomView: false,
-                    selectable: false,
-                    hover: false,
-                    keyboard: false
-                },
-                physics: {
-                    enabled: true,
-                    solver: "forceAtlas2Based",
-                    forceAtlas2Based: {
-                        gravitationalConstant: -30,
-                        centralGravity: 0.001,
-                        springLength: 160,
-                        springConstant: 0.07
-                    }
-                },
-                nodes: {
-                    shape: "dot",
-                    size: 18,
-                    borderWidth: 2,
-                    color: {
-                        border: "#333",
-                        background: "#7bc7ff"
-                    },
-                    font: { size: 16 }
-                },
-                edges: {
-                    smooth: true,
-                    color: { color: "#333" }
-                }
-            };
-            new vis.Network(container, graphData, options);
-        } catch (err) {
-            console.error("Error loading MSF:", err);
-            alert("Error loading MSF. Check console for details.");
-        }
-    }
-    loadMSF();
-</script>
-</body>
-</html> -->
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Strongest Underlying Connection Network</title>
-    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+  <header>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <strong style="font-size:18px">MSF Visualizer</strong>
+        <small>Minimum Spanning Forest — static display (weights shown on edges)</small>
+      </div>
+      <div style="font-size:13px;opacity:0.9">vis-network · MSF</div>
+    </div>
+  </header>
 
-    <style>
-        #network {
-            width: 100%;
-            height: 90vh;
-            border: 1px solid #aaa;
-        }
-        body {
-            margin: 0;
-            font-family: Arial;
-        }
-    </style>
-</head>
-<body>
+  <div class="app">
+    <div class="controls">
+      <div style="margin-bottom:6px"><strong>View</strong></div>
+      <div class="row">
+        <button id="refresh">Reload / Refresh MSF</button>
+      </div>
 
-<h2 style="text-align:center;">Minimum Spanning Forest</h2>
-<div id="network"></div>
+      <div class="legend">
+        <div><strong>Tips:</strong></div>
+        <div>- Hover nodes or edges to see full labels.</div>
+        <div>- Click a node to highlight its neighbors and incident edges.</div>
+      </div>
 
-<script>
-    const API_URL = "http://localhost:5000/api/vis/msf";
+      <div class="tiny">API: <code>/api/users</code> for node labels and <code>/api/vis/msf</code> for the MSF edges. If your endpoint differs, change <code>API_BASE</code> in the script.</div>
+    </div>
 
-    async function loadMSF() {
-        try {
-            const response = await fetch(API_URL);
-            const data = await response.json();
+    <div id="network"></div>
+  </div>
 
-            const msfNodes = data.msfNodes;     // [{id, label}]
-            const msfEdges = data.msfEdges;     // [[id1, id2, weight]]
+  <script>
+    const API_BASE = 'http://localhost:5000/api';
+    const USERS_ENDPOINT = API_BASE + '/users';
+    const VIS_MSF = API_BASE + '/vis/msf';
 
-            // Convert edges to vis format
-            const edges = msfEdges.map(edge => ({
-                from: edge[0],
-                to: edge[1],
-                label: edge[2].toString(),   // show weight on the edge
-                length: 80 + edge[2] * 40,   // edge length proportional to weight
-                font: { align: "top", size: 14 },
-                color: { color: "#444" },
-                width: 2
-            }));
+    // Visual defaults tuned for readability
+    const NODE_DEFAULT = {
+      shape:'dot',
+      size:14,
+      font:{size:15,face:'Inter',multi:false,color:'#222'},
+      color:{background:'#97C2FC',border:'#2B7CE9'},
+      borderWidth:2
+    };
 
-            const nodes = new vis.DataSet(msfNodes);
+    const EDGE_DEFAULT = {
+      color:{color:'rgba(100,100,100,0.6)'},
+      width:1.2,
+      arrows:{to:false},
+      smooth:{enabled:true,type:'dynamic'},
+      font:{size:20,align:'middle',color:'#111',strokeWidth:6,strokeColor:'#ffffff'}
+    };
 
-            const container = document.getElementById("network");
-            const graphData = { nodes: nodes, edges: edges };
+    const HIGHLIGHT_NODE = {background:'#FFD166',border:'#EF476F'};
+    const HIGHLIGHT_EDGE = {color:'#EF476F',width:4};
 
-            const options = {
-                interaction: {
-                    dragNodes: false,
-                    dragView: false,
-                    zoomView: false,
-                    selectable: false,
-                    hover: false,
-                    keyboard: false
-                },
-                physics: {
-                    enabled: true,
-                    solver: "forceAtlas2Based",
-                    forceAtlas2Based: {
-                        gravitationalConstant: -30,
-                        centralGravity: 0.002,
-                        springLength: 80,
-                        springConstant: 0.09
-                    }
-                },
-                edges: {
-                    smooth: true,
-                    font: {
-                        size: 14,
-                        strokeWidth: 0,
-                        align: "horizontal"
-                    }
-                },
-                nodes: {
-                    shape: "dot",
-                    size: 15,
-                    borderWidth: 2,
-                    color: {
-                        border: "#333",
-                        background: "#7bc7ff"
-                    },
-                    font: { size: 16 }
-                }
-            };
+    let allNodes = new vis.DataSet();
+    let allEdges = new vis.DataSet();
+    let network = null;
 
-            new vis.Network(container, graphData, options);
+    const refreshBtn = document.getElementById('refresh');
+    refreshBtn.addEventListener('click', loadMSF);
 
-        } catch (err) {
-            console.error("Error loading MSF:", err);
-            alert("Error loading MSF — check backend console.");
-        }
+    function canonicalEdgeId(a,b){ return a < b ? a + '|' + b : b + '|' + a; }
+
+    function clear(){ allNodes.clear(); allEdges.clear(); if(network) network.destroy(); network = null; }
+
+    function resetHighlights(){
+      for(const n of allNodes.get()) allNodes.update({ id: n.id, color: { background: NODE_DEFAULT.color.background, border: NODE_DEFAULT.color.border } });
+      for(const e of allEdges.get()) allEdges.update({ id: e.id, color: { color: EDGE_DEFAULT.color.color }, width: EDGE_DEFAULT.width });
     }
 
-    loadMSF();
-</script>
+    async function loadMSF(){
+      clear();
+      try{
+        // fetch msf edges
+        const res = await fetch(VIS_MSF);
+        if(!res.ok) throw new Error(res.statusText);
+        const body = await res.json();
+        const edges = body.msfEdges || body.msf || body.msfEdges || body.msf || body.edges || body.msf || [];
 
+        // fetch users for node labels
+        const usersRes = await fetch(USERS_ENDPOINT + '/');
+        if(!usersRes.ok) throw new Error(usersRes.statusText);
+        const users = await usersRes.json();
+
+        // add nodes (use short label for display, full name in tooltip/title)
+        users.forEach(u=> allNodes.add({ id: u._id, label: u.username || (u.name ? u.name.split(' ')[0] : ''), title: (u.name || u.username || u._id), ...NODE_DEFAULT }));
+
+        const seen = new Set();
+        edges.forEach(e=>{
+          let from, to, weight;
+          if(Array.isArray(e)){
+            from = String(e[0]); to = String(e[1]); weight = e[2];
+          } else if(e && typeof e === 'object'){
+            from = String(e[0] ?? e.from);
+            to = String(e[1] ?? e.to);
+            weight = e.weight ?? e.w ?? e[2];
+          }
+          if(!from || !to) return;
+          const id = canonicalEdgeId(from,to);
+          if(seen.has(id)) return; seen.add(id);
+          const w = (weight != null && !isNaN(Number(weight))) ? Number(weight) : null;
+          // scale & cap length to avoid runaway spacing
+          const length = w != null ? Math.max(60, Math.min(200, w * 40)) : 120;
+          allEdges.add({ id: id, from: from, to: to, label: w != null ? String(w) : '', length: length, ...EDGE_DEFAULT });
+        });
+
+        createNetwork();
+      } catch(err){ console.error(err); alert('Error loading MSF: '+err.message); }
+    }
+
+    function createNetwork(){
+      const container = document.getElementById('network');
+      const data = { nodes: allNodes, edges: allEdges };
+      const options = {
+        physics: { enabled: true, barnesHut: {gravitationalConstant:-3000,centralGravity:0.3,springLength:100,springConstant:0.05}, stabilization:{iterations:300}},
+        interaction: { hover:true, tooltipDelay:80, dragNodes:false, dragView:true, zoomView:true },
+        nodes: { chosen:{node:true}, borderWidthSelected:3 },
+        edges: { smooth:false, chosen:{edge:true} },
+        layout: { improvedLayout: true, randomSeed: 42 }
+      };
+
+      if(network) network.destroy();
+      network = new vis.Network(container, data, options);
+
+      // stabilize then freeze so positions stay static
+      network.once('stabilizationIterationsDone', function(){
+        try{ network.setOptions({ physics: false }); }catch(e){}
+      });
+
+      network.on('click', function(params){
+        if(params.nodes && params.nodes.length>0){
+          const id = params.nodes[0];
+          const connected = network.getConnectedNodes(id);
+          resetHighlights();
+          allNodes.update({ id: id, color: { background: HIGHLIGHT_NODE.background, border: HIGHLIGHT_NODE.border } });
+          connected.forEach(nid => allNodes.update({ id: nid, color: { background: '#FFF3BF', border: '#FFB8B8' } }));
+          const incident = network.getConnectedEdges(id);
+          incident.forEach(eid => allEdges.update({ id: eid, color: { color: HIGHLIGHT_EDGE.color }, width: HIGHLIGHT_EDGE.width }));
+        }
+      });
+
+      network.on('hoverNode', function(params){ allNodes.update({ id: params.node, size: 20 }); });
+      network.on('blurNode', function(params){ if(params.node) allNodes.update({ id: params.node, size: NODE_DEFAULT.size }); });
+
+      network.fit({ animation: { duration: 300 } });
+    }
+
+    // init
+    (async function init(){ try{ await loadMSF(); } catch(err){ console.error('init error',err); } })();
+  </script>
 </body>
 </html>

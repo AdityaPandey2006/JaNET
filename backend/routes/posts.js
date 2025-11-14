@@ -312,11 +312,41 @@ router.get('/:postId/likes', async (req, res) => {
         const liked = userId && mongoose.isValidObjectId(userId) && Array.isArray(post.likedBy)
         ? post.likedBy.some(id => String(id) === String(userId)) : undefined;
 
+        // If we fetched likedBy just to check user-specific like, don't return whole array
         return res.status(200).json({ likes: post.likes, liked });
     } catch (err) {
         console.error("Error getting likes:", err);
         return res.status(500).json({ message: 'Server error', error: err.message });
     }
+});
+
+router.delete('/deleteallposts', async (req, res) => {
+  try {
+    // safety: require explicit confirmation query param
+    if (req.query.confirm !== 'true') {
+      return res.status(400).json({
+        message: "This route will permanently delete ALL posts. To proceed add ?confirm=true to the URL."
+      });
+    }
+
+    // Delete all Post documents
+    const deleteResult = await Post.deleteMany({});
+    // Clear the Posts array in all User documents
+    // This sets Posts to an empty array for every user that has Posts field
+    const updateResult = await User.updateMany(
+      { "Posts.0": { $exists: true } }, // only update users who actually have Posts
+      { $set: { Posts: [] } }
+    );
+
+    return res.status(200).json({
+      message: 'All posts deleted and user post references cleared.',
+      deletedPosts: deleteResult.deletedCount ?? 0,
+      usersUpdated: updateResult.nModified ?? updateResult.modifiedCount ?? 0
+    });
+  } catch (err) {
+    console.error("Error in deleteallposts:", err);
+    return res.status(500).json({ message: "Server error while deleting posts", error: err.message });
+  }
 });
 
 module.exports=router;

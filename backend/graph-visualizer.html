@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Social Graph Visualizer — Total Graph & Shortest Path</title>
+  <!-- vis-network CDN -->
+  <script src="https://unpkg.com/vis-network@9.1.2/dist/vis-network.min.js"></script>
+  <link href="https://unpkg.com/vis-network@9.1.2/dist/vis-network.min.css" rel="stylesheet" />
+  <style>
+    :root{--bg:#f7f7fb;--card:#ffffff;--muted:#6b7280}
+    html,body{height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Arial}
+    header{padding:12px 18px;background:#111827;color:#fff}
+    header small{display:block;opacity:0.85;margin-top:6px;font-weight:500}
+    .app{display:flex;gap:16px;padding:12px;height:calc(100% - 72px);box-sizing:border-box;background:var(--bg)}
+    .controls{width:340px;background:var(--card);padding:14px;border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,0.06);display:flex;flex-direction:column}
+    #network{flex:1;border-radius:10px;background:var(--card);box-shadow:0 8px 24px rgba(15,23,42,0.06);min-height:0}
+    label{font-size:13px;color:#111827;margin-top:10px}
+    select,input,button{width:100%;padding:9px;margin-top:6px;border-radius:8px;border:1px solid #e6edf3;font-size:14px}
+    .row{display:flex;gap:8px;margin-top:12px}
+    .row button{flex:1}
+    .tiny{font-size:12px;color:var(--muted);margin-top:10px}
+    pre{white-space:pre-wrap}
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <strong style="font-size:18px">Social Graph Visualizer</strong>
+        <small>Total graph view + shortest-path (static layout)</small>
+      </div>
+      <div style="font-size:13px;opacity:0.9">Static layout · vis-network</div>
+    </div>
+  </header>
+
+  <div class="app">
+    <div class="controls">
+      <label for="userA">Start user (for shortest path)</label>
+      <select id="userA"></select>
+
+      <label for="userB">Target user (for shortest path)</label>
+      <select id="userB"></select>
+
+      <div class="row">
+        <button id="computePath">Compute path</button>
+        <button id="reset">Reset</button>
+      </div>
+
+      <div style="margin-top:12px">
+        <button id="refresh">Reload / Refresh Graph</button>
+      </div>
+
+      <div class="tiny">API expectations: <code>/api/users</code> for full user list and <code>/api/visualizers/:id/shortestpath?target=...</code>. Set <code>API_BASE</code> in the script if your server uses a different base.</div>
+    </div>
+
+    <div id="network"></div>
+  </div>
+
+  <script>
+    // ---------- CONFIG ----------
+    const API_BASE = 'http://localhost:5000/api'; // change if your server uses a different base
+    const USERS_ENDPOINT = API_BASE + '/users';
+    const VIS_ENDPOINT = API_BASE + '/vis';
+
+    // ---------- VISUALS ----------
+    const NODE_DEFAULT = {shape:'dot',size:18,font:{size:13,face:'Inter'},color:{background:'#97C2FC',border:'#2B7CE9'}};
+    const EDGE_DEFAULT = {color:{color:'#bdbdbd'},width:2,arrows:{to:false},font:{align:'top'}};
+    const HIGHLIGHT_NODE = {background:'#FFD166',border:'#EF476F'};
+    const HIGHLIGHT_EDGE = {color:'#EF476F',width:4};
+
+    // dataset stores
+    let allNodes = new vis.DataSet();
+    let allEdges = new vis.DataSet();
+    let network = null;
+
+    let usersList = []; // [{id,name,username}]
+    let usersById = new Map();
+
+    const userA = document.getElementById('userA');
+    const userB = document.getElementById('userB');
+    const computeBtn = document.getElementById('computePath');
+    const refreshBtn = document.getElementById('refresh');
+    const resetBtn = document.getElementById('reset');
+
+    computeBtn.addEventListener('click', computeShortestPath);
+    refreshBtn.addEventListener('click', loadTotalGraph);
+    resetBtn.addEventListener('click', resetHighlights);
+
+    // network creation
+    function createNetwork(){
+      const container = document.getElementById('network');
+      const data = { nodes: allNodes, edges: allEdges };
+      const options = {
+        physics: false,                 // static layout: no physics
+        interaction: { hover:true, tooltipDelay:80, dragNodes:false, dragView:true, zoomView:true },
+        nodes: { chosen:{node:true}, borderWidthSelected:3 },
+        edges: { smooth:false, chosen:{edge:true} },
+        layout: { improvedLayout: true }
+      };
+      if(network) network.destroy();
+      network = new vis.Network(container, data, options);
+
+      // prevent node dragging via programmatic guard too
+      network.on('dragStart', function(params){
+        if(params.nodes && params.nodes.length) network.unselectAll();
+      });
+
+      network.on('click', function(params){
+        if(params.nodes && params.nodes.length>0){
+          const id = params.nodes[0];
+          network.selectNodes([id]);
+        }
+      });
+    }
+
+    // ---------- helpers ----------
+    function canonicalEdgeId(a,b){
+      return a < b ? a + '|' + b : b + '|' + a;
+    }
+
+    function clearGraphs(){
+      allNodes.clear();
+      allEdges.clear();
+      if(network) network.destroy();
+      network = null;
+    }
+
+    // reset highlights to defaults
+    function resetHighlights(){
+      // nodes
+      const nodes = allNodes.get();
+      for(const n of nodes){
+        allNodes.update({id:n.id, color:{background:NODE_DEFAULT.color.background, border:NODE_DEFAULT.color.border}});
+      }
+      // edges
+      const edges = allEdges.get();
+      for(const e of edges){
+        allEdges.update({id:e.id, color:{color:EDGE_DEFAULT.color.color}, width:EDGE_DEFAULT.width});
+      }
+    }
+
+    // ---------- loading users ----------
+    async function loadUsers(){
+      try{
+        const res = await fetch(USERS_ENDPOINT + '/');
+        if(!res.ok) throw new Error(res.status + ' ' + res.statusText);
+        const data = await res.json();
+        usersList = data.map(u => ({ id: u._id, name: u.name || u.username || u._id, username: u.username }));
+        usersById.clear();
+        usersList.forEach(u=> usersById.set(u.id, u));
+
+        // populate dropdowns
+        [userA,userB].forEach(s=>{ s.innerHTML = ''; const opt=document.createElement('option'); opt.value=''; opt.text='-- select --'; s.appendChild(opt); });
+        for(const u of usersList){
+          const optA = document.createElement('option'); optA.value = u.id; optA.text = u.name + (u.username ? ' ('+u.username+')' : ''); userA.appendChild(optA.cloneNode(true));
+          const optB = document.createElement('option'); optB.value = u.id; optB.text = u.name + (u.username ? ' ('+u.username+')' : ''); userB.appendChild(optB.cloneNode(true));
+        }
+      }
+      catch(err){ console.error('loadUsers error',err); alert('Could not load users: '+err.message); }
+    }
+
+    // ---------- build total graph (with weights used as distances) ----------
+    async function loadTotalGraph(){
+      clearGraphs();
+      try{
+        const res = await fetch(USERS_ENDPOINT + '/');
+        if(!res.ok) throw new Error(res.statusText);
+        const users = await res.json();
+
+        users.forEach(u => {
+          allNodes.add({ id: u._id, label: u.name || u.username || u._id, ...NODE_DEFAULT });
+        });
+
+        const seen = new Set();
+        users.forEach(u => {
+          if(!u.friends) return;
+          u.friends.forEach(f => {
+            const a = u._id.toString();
+            const b = f.userId.toString();
+            const key = canonicalEdgeId(a,b);
+            if(seen.has(key)) return;
+            seen.add(key);
+
+            // weight used as distance/label. if absent, show blank label.
+            const weight = (f.weight != null && !isNaN(Number(f.weight))) ? Number(f.weight) : null;
+            // set a sensible visual "length" scaled by weight so heavier distance -> longer edge (scale = 60)
+            const length = weight != null ? Math.max(30, weight * 60) : 60;
+
+            allEdges.add({ id: key, from: a, to: b, label: weight != null ? String(weight) : '', length: length, ...EDGE_DEFAULT });
+          });
+        });
+
+        await loadUsers(); // ensure dropdowns are populated
+        createNetwork();
+
+        // After network is created, lock nodes visually so they can't be dragged
+        // (vis will still compute an initial layout but user won't be able to move nodes)
+        network.fit();
+      }
+      catch(err){ console.error(err); alert('Error loading total graph: '+err.message); }
+    }
+
+    // ---------- shortest path ----------
+    async function computeShortestPath(){
+      const a = userA.value;
+      const b = userB.value;
+      if(!a || !b){ alert('Select both start and target'); return; }
+      if(a === b){ alert('Start and target cannot be the same'); return; }
+
+      try{
+        const res = await fetch(VIS_ENDPOINT + '/' + encodeURIComponent(a) + '/shortestpath?target=' + encodeURIComponent(b));
+        if(!res.ok){
+          const txt = await res.text();
+          throw new Error(txt || 'Server error');
+        }
+        const body = await res.json();
+        const path = body.path;
+        if(!path || !Array.isArray(path) || path.length === 0){ alert('No path found'); return; }
+
+        // reset then highlight path
+        resetHighlights();
+        for(let i=0;i<path.length;i++){
+          const nid = path[i];
+          if(allNodes.get(nid)){
+            allNodes.update({ id: nid, color: { background: HIGHLIGHT_NODE.background, border: HIGHLIGHT_NODE.border } });
+          }
+          if(i < path.length - 1){
+            const aId = path[i];
+            const bId = path[i+1];
+            const eId = canonicalEdgeId(aId,bId);
+            const e = allEdges.get(eId);
+            if(e){
+              allEdges.update({ id: eId, color: { color: HIGHLIGHT_EDGE.color }, width: HIGHLIGHT_EDGE.width });
+            } else {
+              // fallback: search by endpoints
+              const candidates = allEdges.get();
+              for(const cand of candidates){
+                if((cand.from === aId && cand.to === bId) || (cand.from === bId && cand.to === aId)){
+                  allEdges.update({ id: cand.id, color: { color: HIGHLIGHT_EDGE.color }, width: HIGHLIGHT_EDGE.width });
+                }
+              }
+            }
+          }
+        }
+
+        // focus on first path node
+        if(network && path.length) network.focus(path[0], {animation:{duration:300}});
+      }
+      catch(err){ console.error(err); alert('Error computing shortest path: '+err.message); }
+    }
+
+    // ---------- init ----------
+    (async function init(){
+      try{
+        await loadUsers();
+        await loadTotalGraph();
+      } catch(err){ console.error('init error',err); }
+    })();
+  </script>
+</body>
+</html>

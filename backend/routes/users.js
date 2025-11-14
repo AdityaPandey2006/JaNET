@@ -3,7 +3,8 @@ const express=require('express');
 const router=express.Router();
 const User=require('../models/User'); //jo user ke actual collection ko export karwa rahe the User.js se, yeh basically allow karte hai mongodb pe jitne bhi users hain unko access karne ko
 const { MaxPriorityQueue } = require('@datastructures-js/priority-queue');
-const { Queue } = require('@datastructures-js/queue');
+
+
 
 //adding a new node(new user)
 //mongodb functions here .save() and .find() both will return promises
@@ -26,80 +27,32 @@ router.post('/addUser', async (req,res)=>{
     }
 });
 
-router.post('/addmass', async (req, res) => {
-	try {
-		const usersData = req.body;
-		if (!Array.isArray(usersData) || usersData.length === 0) {
-			return res.status(400).json({ message: "Request body must be a non-empty array of users." });
-		}
+router.post('/addmass',async (req,res)=>{
+    try{
+        const usersData = req.body;
 
-		const seenUsernames = new Set();
-		for (const u of usersData) {
-			if (!u.name || !u.username || !u.email) {
-				return res.status(400).json({ message: "Each user must have name, username, and email." });
-			}
-			if (seenUsernames.has(u.username)) {
-				return res.status(400).json({ message: `Duplicate username in payload: ${u.username}` });
-			}
-			seenUsernames.add(u.username);
-		}
+        if (!Array.isArray(usersData) || usersData.length === 0) {
+            return res.status(400).json({ message: "Request body must be a non-empty array of users." });
+        }
 
-		const usersToInsert = usersData.map(u => ({
-			name: u.name,
-			username: u.username,
-			email: u.email,
-			password: u.password || 'pass',
-			department: u.department || '',
-			year: u.year || null,
-			intro: u.intro || '',
-			friends: []
-		}));
+        for (let user of usersData) {
+            const { name, username, email } = user;
+            if (!name || !username || !email) {
+                return res.status(400).json({ message: "Each user must have name, username, and email." });
+            }
+        }
 
-		const inserted = await User.insertMany(usersToInsert, { ordered: false });
+        const newUsers = await User.insertMany(usersData, {ordered:false});
 
-		const usernameToId = new Map();
-		for (const doc of inserted) {
-			usernameToId.set(doc.username, doc._id.toString());
-		}
-
-		const bulkOps = [];
-		for (const original of usersData) {
-			const myUsername = original.username;
-			const myId = usernameToId.get(myUsername);
-			if (!myId) continue;
-
-			const friendUsernames = Array.isArray(original.friends) ? original.friends : [];
-			const friendObjects = friendUsernames
-				.map(fn => usernameToId.get(fn))
-				.filter(Boolean)
-				.map(fid => ({
-					userId: mongoose.Types.ObjectId(fid),
-					weight: 1
-				}));
-
-			bulkOps.push({
-				updateOne: {
-					filter: { _id: mongoose.Types.ObjectId(myId) },
-					update: { $set: { friends: friendObjects } }
-				}
-			});
-		}
-
-		if (bulkOps.length > 0) {
-			await User.bulkWrite(bulkOps);
-		}
-
-		const insertedIds = inserted.map(u => u._id);
-		const refreshed = await User.find({ _id: { $in: insertedIds } });
-
-		res.status(201).json({
-			message: `${refreshed.length} users added successfully with friends`,
-			users: refreshed
-		});
-	} catch (err) {
-		console.error(err);
-		res.status(500).json({ message: "could not add mass users: " + err.message });
-	}
+        res.status(201).json({
+            message: `${newUsers.length} users added successfully`,
+            users: newUsers
+        });
+    }
+    catch(err){
+        let errMessage="could not add mass users"+err.message;
+        res.status(500).json({message:errMessage});
+    }
 });
 
 
@@ -140,7 +93,7 @@ router.get('/search/:username',async(req,res)=>{
         res.json(thisName);
     }
     catch(err){
-        res.status(500).json({message:"Encountered "+err.message});
+        res.status(500).json({message:"Encountered "+err.Message});
     }
 
 })
@@ -242,7 +195,7 @@ function findFriends(userid){
 }
 
 //get friend recommendations page using BFS
-router.get(' ', async(req,res) => {
+router.get('/:id/friendrecommendations', async(req,res) => {
     try{
         const userid = req.params.id;
 
@@ -273,11 +226,11 @@ async function friendGetter(userObj1){
         return friend.userId;
     })
     return friends;
-}//helps us find the list of friends of a user
+}
 
 let jaccardSim=function(friendsCountA,friendsCountB,mutualFriendsCount){
     return mutualFriendsCount/(friendsCountA+friendsCountB-mutualFriendsCount);//intersection/union
-}//tells us how good a possible connection is between a particular user and a possible friend recommendation. Higher the jaccard similarity, better the friend recommendation
+}
 
 router.get('/:id/giveRecommendation',async (req,res)=>{
     try{
@@ -343,9 +296,6 @@ router.get('/:id/giveRecommendation',async (req,res)=>{
         for(let i=0;i<maxRecc;i++){
             // let max=pq.dequeue;
             if(pq.isEmpty()) break;
-            // const actualReccObj=await User.findById(pq.front().id);
-            // const actualReccName=actualReccObj.name;
-            // actualRecommendations.push(actualReccName);
             actualRecommendations.push(pq.front());
             pq.dequeue();
         }
@@ -359,132 +309,15 @@ router.get('/:id/giveRecommendation',async (req,res)=>{
 });
 
 //  Temporary cleanup route — delete all users
-router.get('/:id/shortestpath',async(req,res)=>{
-    try{
-        const userId = req.params.id;
-        const targetId = req.query.target;
-
-        if(targetId === userId){
-            return res.status(200).json({ path: [userId] });
-        }
-
-        const userObj = await User.findById(userId);
-        const targetObj = await User.findById(targetId);
-
-        if (!userObj || !targetObj) {
-            return res.status(404).json({ message: "Start or target user not found" });
-        }
-
-        const queueF = new Queue();
-        const queueB = new Queue();
-
-        const parentF = new Map();
-        const parentB = new Map();
-
-        queueF.enqueue(userId);
-        parentF.set(userId,null);
-
-        queueB.enqueue(targetId);
-        parentB.set(targetId,null);
-
-        async function getFriendIds(userId) {
-            const u = await User.findById(userId, { friends: 1 }); // project only friends
-            if (!u || !u.friends) return [];
-            return u.friends.map(f => f.userId.toString());
-        }
-
-        function makePath(meet){
-            const pathLeft = [];
-            let curr = meet;
-            while(curr !== null){
-                pathLeft.push(curr);
-                curr = parentF.get(curr);
-            }
-            pathLeft.reverse();
-
-            const pathRight = [];
-            curr = parentB.get(meet);
-            while(curr != null){
-                pathRight.push(curr);
-                curr = parentB.get(curr);
-            }
-            return pathLeft.concat(pathRight);
-        }
-
-        async function expandFrontier(q, mineParents, otherParents){
-            const layerSize =  q.size ? q.size() : undefined;
-            const steps = (typeof layerSize == 'number' && layerSize > 0) ? layerSize : 1;
-            for(let i = 0;i<steps;i++){
-                if(q.isEmpty()) break;
-                const node = q.dequeue();
-                const friends = await getFriendIds(node);
-                for(const fr of friends){
-                    if(!mineParents.has(fr)){
-                        mineParents.set(fr,node);
-                        q.enqueue(fr);
-                        if(otherParents.has(fr)){
-                            return fr;
-                        }
-                    }
-                }
-            }
-            return null;
-        }
-
-        let meetingNode = null;
-
-        while(!queueF.isEmpty() && !queueB.isEmpty()){
-            let meet = null;
-            const sizeF = queueF.size ? queueF.size() : Infinity;
-            const sizeB = queueB.size ? queueB.size() : Infinity;
-
-            if(sizeF <= sizeB){
-                meet = await expandFrontier(queueF, parentF, parentB);
-                if(meet){
-                    meetingNode = meet;
-                    break;
-                }
-                meet = await expandFrontier(queueB, parentB, parentF);
-                if(meet){
-                    meetingNode = meet;
-                    break;
-                }
-            } else {
-                meet = await expandFrontier(queueB, parentB, parentF);
-                if(meet){
-                    meetingNode = meet;
-                    break;
-                }
-                meet = await expandFrontier(queueF, parentF, parentB);
-                if(meet){
-                    meetingNode = meet;
-                    break;
-                }
-            }
-        }
-
-        if(!meetingNode){
-            return res.status(404).json({message: "No such path exists between these given users"});
-        }
-
-        const path = makePath(meetingNode);
-        return res.status(200).json({ path });
-    }
-    catch(err){
-        res.status(400).json({message: 'Encountered error: ' + err.message});
-    }
-});
-
-//route to delete all users(for dev purposes)
 router.delete('/deleteAll', async (req, res) => {
     try {
-    const result = await User.deleteMany({});
-    res.status(200).json({
-        message: `Deleted ${result.deletedCount} users successfully`
+        const result = await User.deleteMany({});
+        res.status(200).json({
+            message: `Deleted ${result.deletedCount} users successfully`
     });
     }
     catch (err) {
-    res.status(500).json({ message: 'Error deleting users: ' + err.message });
+        res.status(500).json({ message: 'Error deleting users: ' + err.message });
     }
 });
 
