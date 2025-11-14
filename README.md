@@ -1,204 +1,83 @@
+# JaNET – Graph-Based Social Network Analysis
 
-```markdown
-# JaNET — Social Media-Esque Platform with MSF Visualizer
+JaNET is a social network system that models users and their interactions as a graph.
+It provides tools to analyze hidden structure, relationships, and content relevance across the network using standard graph algorithms.
 
-JaNET is a social-media-style experimental platform that integrates:
-- A Node.js + Express backend
-- Modular routes and controllers
-- MongoDB models
-- A Mass-Spring-Force (MSF) visualizer (HTML + Python)
-- Utility functions for processing and visualization
-- A structured backend suitable for full-stack expansion
+## Features
 
-This project appears to be an evolving prototype for an interactive social-graph system, where users, posts, or connections may be visualized and processed using MSF dynamics.
+- Friend recommendation using Jaccard Similarity
+- Shortest path between users using Bidirectional BFS
+- Personalized post recommendation using a simplified PageRank
+- Dynamic friendship strengths based on chat frequency
+- Strongest underlying connection network using Minimum Spanning Forest (MSF)
+- Visualizers for graph structure and MSF
+- Scripts for generating mass users and posts for large-scale testing
 
----
+## How It Works
 
-## 📂 Project Structure
+### Friend Recommendation
+Uses Jaccard Similarity on friends-of-friends to rank potential connections.
+
+### Shortest Path
+Bidirectional BFS computes the smallest degree of separation between any two users.
+
+### Post Recommendation
+A simplified PageRank scores posts based on relevance to the user’s network and interactions.
+
+### Dynamic Friendship Strength
+Edges are weighted based on chat frequency, making the network evolve dynamically over time.
+
+### Minimum Spanning Forest
+Builds an MSF over the weighted graph to extract the strongest backbone of the network.
+
+## Project Structure
 
 ```
-
 JaNET/
 │
 ├── backend/
-│   ├── models/            # Mongoose models (Users, Posts, etc.)
-│   ├── routes/            # All Express routes and API endpoints
-│   ├── utils/             # Helper utilities
-│   ├── server.js          # Main Express server file
-│   ├── package.json       # Backend dependencies
-│   ├── msf_visualizer.html# Web UI visualizer for MSF
-│   └── visualizer.py      # Python backend for MSF simulation
+│   ├── models/
+│   │   ├── User.js
+│   │   ├── Post.js
+│   │   └── Chat.js
+│   ├── routes/
+│   │   ├── users.js
+│   │   ├── posts.js
+│   │   ├── friends.js
+│   │   ├── chats.js
+│   │   ├── community.js
+│   │   └── visualisers.js
+│   ├── utils/
+│   ├── create_mass_posts.js
+│   ├── graph-visualizer.html
+│   ├── msf_visualizer.html
+│   └── server.js
 │
-├── node_modules/          # Installed dependencies
-├── .gitignore
-└── README.md              # (You can replace this with this version)
+└── client/
+```
 
-````
+## Running the Project
 
----
+### Backend
 
-## 🛠️ Tech Stack
-
-### **Backend**
-- **Node.js**
-- **Express**
-- **MongoDB + Mongoose**
-
-### **Visualization**
-- **HTML + JavaScript (MSF Visualizer)**
-- **Python (`visualizer.py`)** for computational logic
-
----
-
-## 🚀 Getting Started
-
-### 1. **Clone the Repository**
-```bash
-git clone <your-repo-url>
-cd JaNET/backend
-````
-
----
-
-## 📦 Installation
-
-### Install backend dependencies:
-
-```bash
+```
+cd backend
 npm install
+npm start/node server.js
 ```
 
-If Python dependencies are used in `visualizer.py`, install them as well:
-
-```bash
-pip install -r requirements.txt
-```
-
-(*Create this file if needed.*)
-
----
-
-## ▶️ Running the Project
-
-### Start the backend server:
-
-```bash
-node server.js
-```
-
-OR (if using nodemon):
-
-```bash
-npx nodemon server.js
-```
-
----
-
-## 🌐 API Structure
-
-Your backend routes are inside:
+Requires a `.env` file with:
 
 ```
-backend/routes/
+MONGO_URI=your_connection_string
+PORT=5000
 ```
 
-Typical structure:
+## Scripts
 
-* `auth.js` — login/signup
-* `user.js` — user data endpoints
-* `post.js` — posts or interactions
-* Additional experimental routes for MSF models
+- create_mass_posts.js — generate random sample posts from provided examples for testing.
 
----
+## Visualizers
 
-## 🧠 MSF (Mass-Spring-Force) Visualizer
-
-### Open the visualizer:
-
-```
-backend/msf_visualizer.html
-```
-
-This file communicates with:
-
-```
-backend/visualizer.py
-```
-
-The Python script:
-
-* Processes mass-spring-force simulations
-* Generates graph-like layout data
-* Can be embedded into the backend or used standalone
-
----
-
-## 🔧 Utilities
-
-Inside:
-
-```
-backend/utils/
-```
-
-You will find helper logic such as:
-
-* Data formatting
-* Graph calculations
-* Misc middleware
-
----
-
-## 📁 Models
-
-Inside:
-
-```
-backend/models/
-```
-
-You will find Mongoose schemas (User, Posts, Graph nodes, etc.)
-
----
-
-## 🐛 Debugging & Logs
-
-Run server with verbose logging:
-
-```bash
-node server.js --debug
-```
-
----
-
-## 🤝 Contributing
-
-1. Fork the repo
-2. Create a new branch:
-
-   ```bash
-   git checkout -b feature-new
-   ```
-3. Commit changes:
-
-   ```bash
-   git commit -m "Added new feature"
-   ```
-4. Push and create PR
-
----
-
-## 📜 License
-
-This project is currently for educational & experimental use.
-
----
-
-## 🙌 Acknowledgments
-
-* Inspired by physics-based graph layout algorithms
-* Built with love using Node.js and Python
-* For research, prototyping, and learning purposes
-
----
-
+- graph-visualizer.html — network structure visualization, along with Shortest path between any 2 users visualized.
+- msf_visualizer.html — minimum spanning forest visualization.
