@@ -57,7 +57,7 @@
     const USERS_ENDPOINT = API_BASE + '/users';
     const VIS_MSF = API_BASE + '/vis/msf';
 
-    // Visual defaults tuned for readability
+    // Visual defaults
     const NODE_DEFAULT = {
       shape:'dot',
       size:14,
@@ -102,12 +102,12 @@
         const body = await res.json();
         const edges = body.msfEdges || body.msf || body.msfEdges || body.msf || body.edges || body.msf || [];
 
-        // fetch users for node labels
+        // fetch users
         const usersRes = await fetch(USERS_ENDPOINT + '/');
         if(!usersRes.ok) throw new Error(usersRes.statusText);
         const users = await usersRes.json();
 
-        // add nodes (use short label for display, full name in tooltip/title)
+        // add nodes
         users.forEach(u=> allNodes.add({ id: u._id, label: u.username || (u.name ? u.name.split(' ')[0] : ''), title: (u.name || u.username || u._id), ...NODE_DEFAULT }));
 
         const seen = new Set();
@@ -124,7 +124,6 @@
           const id = canonicalEdgeId(from,to);
           if(seen.has(id)) return; seen.add(id);
           const w = (weight != null && !isNaN(Number(weight))) ? Number(weight) : null;
-          // scale & cap length to avoid runaway spacing
           const length = w != null ? Math.max(60, Math.min(200, w * 40)) : 120;
           allEdges.add({ id: id, from: from, to: to, label: w != null ? String(w) : '', length: length, ...EDGE_DEFAULT });
         });
@@ -147,7 +146,6 @@
       if(network) network.destroy();
       network = new vis.Network(container, data, options);
 
-      // stabilize then freeze so positions stay static
       network.once('stabilizationIterationsDone', function(){
         try{ network.setOptions({ physics: false }); }catch(e){}
       });

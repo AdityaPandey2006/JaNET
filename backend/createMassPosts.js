@@ -4,6 +4,8 @@
 // Usage (bash):
 //   MONGO_URI="mongodb://localhost:27017/JaNET" POSTS_PER_USER=8 node create_mass_posts.js
 
+//Helper mass posting script for development/testing purposes
+
 const mongoose = require('mongoose');
 const path = require('path');
 
@@ -67,7 +69,7 @@ const sampleBodies = [
         // pick a random number of likes (0 .. MAX_RANDOM_LIKES)
         const likeCount = Math.floor(Math.random() * (MAX_RANDOM_LIKES + 1));
 
-        // choose random users who liked the post without mutating `users`
+        // choose random users who liked the post without mutating users
         const shuffled = shuffledCopy(users);
         // remove the author from potential likers so author doesn't like own post (for realism)
         const filtered = shuffled.filter(u => String(u._id) !== String(user._id));

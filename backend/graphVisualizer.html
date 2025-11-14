@@ -4,7 +4,6 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Social Graph Visualizer — Total Graph & Shortest Path</title>
-  <!-- vis-network CDN -->
   <script src="https://unpkg.com/vis-network@9.1.2/dist/vis-network.min.js"></script>
   <link href="https://unpkg.com/vis-network@9.1.2/dist/vis-network.min.css" rel="stylesheet" />
   <style>
@@ -58,12 +57,12 @@
   </div>
 
   <script>
-    // ---------- CONFIG ----------
+    // API endpoints
     const API_BASE = 'http://localhost:5000/api'; // change if your server uses a different base
     const USERS_ENDPOINT = API_BASE + '/users';
     const VIS_ENDPOINT = API_BASE + '/vis';
 
-    // ---------- VISUALS ----------
+    // Visual defaults
     const NODE_DEFAULT = {shape:'dot',size:18,font:{size:13,face:'Inter'},color:{background:'#97C2FC',border:'#2B7CE9'}};
     const EDGE_DEFAULT = {color:{color:'#bdbdbd'},width:2,arrows:{to:false},font:{align:'top'}};
     const HIGHLIGHT_NODE = {background:'#FFD166',border:'#EF476F'};
@@ -87,12 +86,11 @@
     refreshBtn.addEventListener('click', loadTotalGraph);
     resetBtn.addEventListener('click', resetHighlights);
 
-    // network creation
     function createNetwork(){
       const container = document.getElementById('network');
       const data = { nodes: allNodes, edges: allEdges };
       const options = {
-        physics: false,                 // static layout: no physics
+        physics: false,
         interaction: { hover:true, tooltipDelay:80, dragNodes:false, dragView:true, zoomView:true },
         nodes: { chosen:{node:true}, borderWidthSelected:3 },
         edges: { smooth:false, chosen:{edge:true} },
@@ -101,7 +99,6 @@
       if(network) network.destroy();
       network = new vis.Network(container, data, options);
 
-      // prevent node dragging via programmatic guard too
       network.on('dragStart', function(params){
         if(params.nodes && params.nodes.length) network.unselectAll();
       });
@@ -114,7 +111,6 @@
       });
     }
 
-    // ---------- helpers ----------
     function canonicalEdgeId(a,b){
       return a < b ? a + '|' + b : b + '|' + a;
     }
@@ -126,7 +122,7 @@
       network = null;
     }
 
-    // reset highlights to defaults
+    // reset highlighted nodes
     function resetHighlights(){
       // nodes
       const nodes = allNodes.get();
@@ -140,7 +136,7 @@
       }
     }
 
-    // ---------- loading users ----------
+    //load all users
     async function loadUsers(){
       try{
         const res = await fetch(USERS_ENDPOINT + '/');
@@ -160,7 +156,7 @@
       catch(err){ console.error('loadUsers error',err); alert('Could not load users: '+err.message); }
     }
 
-    // ---------- build total graph (with weights used as distances) ----------
+    //make full graph
     async function loadTotalGraph(){
       clearGraphs();
       try{
@@ -194,8 +190,6 @@
         await loadUsers(); // ensure dropdowns are populated
         createNetwork();
 
-        // After network is created, lock nodes visually so they can't be dragged
-        // (vis will still compute an initial layout but user won't be able to move nodes)
         network.fit();
       }
       catch(err){ console.error(err); alert('Error loading total graph: '+err.message); }
@@ -250,7 +244,7 @@
       catch(err){ console.error(err); alert('Error computing shortest path: '+err.message); }
     }
 
-    // ---------- init ----------
+    // Initialize
     (async function init(){
       try{
         await loadUsers();
