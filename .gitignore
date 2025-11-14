@@ -2,3 +2,6 @@ node_modules/
 .env
 *.log
 notes.txt
+graph_path.png
+graph_static.html
+graph.png

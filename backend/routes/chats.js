@@ -67,6 +67,7 @@ router.post("/send",async(req,res)=>{
         res.status(500).json({ error: "Server error" });
     }
 });
+
 router.get("/:userid1/:userid2",async(req,res)=>{
     try{
         const{userid1,userid2}=req.params;
@@ -99,11 +100,11 @@ setInterval(async() => {
             }
             if (changed) await user.save();
         }
-         console.log("✅ Friendship weights decayed");
+         console.log("Friendship weights decayed");
     }
     catch(err){
         console.log("error updating weights");
     }    
 }, 120000);
 
-module.exports = router;
+module.exports=router;
