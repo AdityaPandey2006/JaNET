@@ -74,7 +74,7 @@ router.get('/:id',async(req,res)=>{
     try{
         let id1=req.params.id;
         const thisUser=await User.findById(id1);
-        res.json(thisUser);
+        res.json(thisUser); //basically returns the user object as json
     }
     catch(err){
         let errMessage="could not load user data "+err.message;
@@ -150,6 +150,7 @@ module.exports=router;//after this plugged in this router to the server.js
 //==>>furthur addition after friends.js made, to get list of mongodb ids of all friends
 
 //loading the list of neighbouring nodes or friends of a user
+
 router.get('/:id/getFriends',async(req,res)=>{
     try{
         // const userId=req.body; YEH USE MAHI KAR SAKTE KYUNKI GET REQUESTS KA BODY HOTA HI NAHI
@@ -176,6 +177,7 @@ router.get('/:id/getFriends',async(req,res)=>{
         res.status(400).json({message:errMessage+err});
     }
 });
+
 
 function findFriends(userid){
     const userObj = User.findById(userid);
@@ -308,14 +310,15 @@ router.get('/:id/giveRecommendation',async (req,res)=>{
 
 //  Temporary cleanup route — delete all users
 router.delete('/deleteAll', async (req, res) => {
-  try {
-    const result = await User.deleteMany({});
-    res.status(200).json({
-      message: `Deleted ${result.deletedCount} users successfully`
+    try {
+        const result = await User.deleteMany({});
+        res.status(200).json({
+            message: `Deleted ${result.deletedCount} users successfully`
     });
-  } catch (err) {
-    res.status(500).json({ message: 'Error deleting users: ' + err.message });
-  }
+    }
+    catch (err) {
+        res.status(500).json({ message: 'Error deleting users: ' + err.message });
+    }
 });
 
 module.exports=router;//after this plugged in this router to the server.js

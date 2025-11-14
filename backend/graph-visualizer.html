@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Social Graph Visualizer</title>
+  <title>Social Graph Visualizer — Total Graph & Shortest Path</title>
   <!-- vis-network CDN -->
   <script src="https://unpkg.com/vis-network@9.1.2/dist/vis-network.min.js"></script>
   <link href="https://unpkg.com/vis-network@9.1.2/dist/vis-network.min.css" rel="stylesheet" />
@@ -28,7 +28,7 @@
     <div style="display:flex;justify-content:space-between;align-items:center">
       <div>
         <strong style="font-size:18px">Social Graph Visualizer</strong>
-        <small>View the total graph or the minimum spanning forest (MSF). Compute shortest paths in the total graph.</small>
+        <small>Total graph view + shortest-path (static layout)</small>
       </div>
       <div style="font-size:13px;opacity:0.9">Static layout · vis-network</div>
     </div>
@@ -36,12 +36,6 @@
 
   <div class="app">
     <div class="controls">
-      <label for="viewMode">View</label>
-      <select id="viewMode">
-        <option value="total">Total graph</option>
-        <option value="msf">Minimum Spanning Forest (MSF)</option>
-      </select>
-
       <label for="userA">Start user (for shortest path)</label>
       <select id="userA"></select>
 
@@ -57,7 +51,7 @@
         <button id="refresh">Reload / Refresh Graph</button>
       </div>
 
-      <div class="tiny">API expectations: <code>/api/users</code> for full user list and <code>/api/visualizers/msf</code> and <code>/api/visualizers/:id/shortestpath?target=...</code>. If you mount differently set <code>API_BASE</code> in the script.</div>
+      <div class="tiny">API expectations: <code>/api/users</code> for full user list and <code>/api/visualizers/:id/shortestpath?target=...</code>. Set <code>API_BASE</code> in the script if your server uses a different base.</div>
     </div>
 
     <div id="network"></div>
@@ -71,7 +65,7 @@
 
     // ---------- VISUALS ----------
     const NODE_DEFAULT = {shape:'dot',size:18,font:{size:13,face:'Inter'},color:{background:'#97C2FC',border:'#2B7CE9'}};
-    const EDGE_DEFAULT = {color:{color:'#bdbdbd'},width:2,arrows:{to:false}};
+    const EDGE_DEFAULT = {color:{color:'#bdbdbd'},width:2,arrows:{to:false},font:{align:'top'}};
     const HIGHLIGHT_NODE = {background:'#FFD166',border:'#EF476F'};
     const HIGHLIGHT_EDGE = {color:'#EF476F',width:4};
 
@@ -83,16 +77,14 @@
     let usersList = []; // [{id,name,username}]
     let usersById = new Map();
 
-    const viewMode = document.getElementById('viewMode');
     const userA = document.getElementById('userA');
     const userB = document.getElementById('userB');
     const computeBtn = document.getElementById('computePath');
     const refreshBtn = document.getElementById('refresh');
     const resetBtn = document.getElementById('reset');
 
-    viewMode.addEventListener('change', onModeChange);
     computeBtn.addEventListener('click', computeShortestPath);
-    refreshBtn.addEventListener('click', loadCurrentMode);
+    refreshBtn.addEventListener('click', loadTotalGraph);
     resetBtn.addEventListener('click', resetHighlights);
 
     // network creation
@@ -100,14 +92,19 @@
       const container = document.getElementById('network');
       const data = { nodes: allNodes, edges: allEdges };
       const options = {
-        physics: false,
-        interaction: { hover:true, tooltipDelay:80 },
+        physics: false,                 // static layout: no physics
+        interaction: { hover:true, tooltipDelay:80, dragNodes:false, dragView:true, zoomView:true },
         nodes: { chosen:{node:true}, borderWidthSelected:3 },
         edges: { smooth:false, chosen:{edge:true} },
-        layout: { improvedLayout:true }
+        layout: { improvedLayout: true }
       };
       if(network) network.destroy();
       network = new vis.Network(container, data, options);
+
+      // prevent node dragging via programmatic guard too
+      network.on('dragStart', function(params){
+        if(params.nodes && params.nodes.length) network.unselectAll();
+      });
 
       network.on('click', function(params){
         if(params.nodes && params.nodes.length>0){
@@ -127,10 +124,6 @@
       allEdges.clear();
       if(network) network.destroy();
       network = null;
-    }
-
-    function setNodeToDefault(node){
-      return Object.assign({}, NODE_DEFAULT);
     }
 
     // reset highlights to defaults
@@ -167,7 +160,7 @@
       catch(err){ console.error('loadUsers error',err); alert('Could not load users: '+err.message); }
     }
 
-    // ---------- build graphs ----------
+    // ---------- build total graph (with weights used as distances) ----------
     async function loadTotalGraph(){
       clearGraphs();
       try{
@@ -188,57 +181,24 @@
             const key = canonicalEdgeId(a,b);
             if(seen.has(key)) return;
             seen.add(key);
-            allEdges.add({ id: key, from: a, to: b, label: (f.weight!=null?String(f.weight):''), ...EDGE_DEFAULT });
+
+            // weight used as distance/label. if absent, show blank label.
+            const weight = (f.weight != null && !isNaN(Number(f.weight))) ? Number(f.weight) : null;
+            // set a sensible visual "length" scaled by weight so heavier distance -> longer edge (scale = 60)
+            const length = weight != null ? Math.max(30, weight * 60) : 60;
+
+            allEdges.add({ id: key, from: a, to: b, label: weight != null ? String(weight) : '', length: length, ...EDGE_DEFAULT });
           });
         });
 
+        await loadUsers(); // ensure dropdowns are populated
         createNetwork();
+
+        // After network is created, lock nodes visually so they can't be dragged
+        // (vis will still compute an initial layout but user won't be able to move nodes)
+        network.fit();
       }
       catch(err){ console.error(err); alert('Error loading total graph: '+err.message); }
-    }
-
-    async function loadMSF(){
-      clearGraphs();
-      try{
-        const res = await fetch(VIS_ENDPOINT + '/msf');
-        if(!res.ok) throw new Error(res.statusText);
-        const body = await res.json();
-        const edges = body.msf || [];
-
-        // load users to create nodes (labels)
-        const usersRes = await fetch(USERS_ENDPOINT + '/');
-        const users = await usersRes.json();
-        users.forEach(u => {
-          allNodes.add({ id: u._id, label: u.name || u.username || u._id, ...NODE_DEFAULT });
-        });
-
-        // add edges
-        edges.forEach(e => {
-          const id = canonicalEdgeId(e[0], e[1]);
-          allEdges.add({ id: id, from: e[0], to: e[1], label: '', ...EDGE_DEFAULT });
-        });
-
-        createNetwork();
-      }
-      catch(err){ console.error(err); alert('Error loading MSF: '+err.message); }
-    }
-
-    // ---------- mode handling ----------
-    async function loadCurrentMode(){
-      const mode = viewMode.value;
-      if(mode === 'total'){
-        await loadUsers();
-        await loadTotalGraph();
-      } else {
-        await loadUsers();
-        await loadMSF();
-      }
-    }
-
-    function onModeChange(){
-      // clear previous highlights and reload data for chosen mode
-      resetHighlights();
-      loadCurrentMode();
     }
 
     // ---------- shortest path ----------
@@ -294,7 +254,7 @@
     (async function init(){
       try{
         await loadUsers();
-        await loadCurrentMode();
+        await loadTotalGraph();
       } catch(err){ console.error('init error',err); }
     })();
   </script>

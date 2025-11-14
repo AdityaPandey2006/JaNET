@@ -12,44 +12,37 @@ app.use(cors());
 app.use(express.json());
 //mongoose.connect promise return karta hai. 
 //toh ek async function bana diye aur jab tak connection na ho jaaye tab tak wait kar liye
+// async function mongooseConnection() {
+//   try {
+//     console.log("Connecting to MongoDB...");
+//     await mongoose.connect(process.env.MONGO_URI, {
+//       useNewUrlParser: true,
+//       useUnifiedTopology: true,
+//     });
+//     console.log(" MongoDB connection established");
+//   } catch (err) { // added (err) here
+//     console.error(" MongoDB connection failed:");
+//     console.error(err); 
+//   }
+// }
+
+
+
 async function mongooseConnection(){
-    try {
-    console.log("Connecting to MongoDB...");
-    await mongoose.connect(process.env.MONGO_URI, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-    });
-    console.log(" MongoDB connection established");
-  } catch (err) { // added (err) here
-    console.error(" MongoDB connection failed:");
-    console.error(err); 
+  try{
+      await mongoose.connect(process.env.MONGO_URI,{
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      });
+      console.log("connection established");
+  }
+  catch(err){
+      console.log("failed"+err.message);
   }
 }
-async function mongooseConnection(){
-    try{
-        await mongoose.connect(process.env.MONGO_URI,{
-          useNewUrlParser: true,
-          useUnifiedTopology: true,
-        });
-        console.log("connection established");
-    }
-    catch (err) { // added (err) here
-        console.error(" MongoDB connection failed:");
-        console.error(err); 
-    }
-    async function mongooseConnection(){
-        try{
-            await mongoose.connect(process.env.MONGO_URI,{
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-            });
-            console.log("connection established");
-        }
-        catch(err){
-            console.log("failed"+err.message);
-        }
-    }
-};
+
+
+
 
 mongooseConnection();
 

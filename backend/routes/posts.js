@@ -269,6 +269,8 @@ router.get('/:id/postrec', async (req, res) => {
   }
 });
 
+
+
 router.get('/:postId/like', async(req,res) => {
     try{
         const { postId } = req.params;

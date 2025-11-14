@@ -67,6 +67,7 @@ router.post("/send",async(req,res)=>{
         res.status(500).json({ error: "Server error" });
     }
 });
+
 router.get("/:userid1/:userid2",async(req,res)=>{
     try{
         const{userid1,userid2}=req.params;
@@ -84,27 +85,4 @@ router.get("/:userid1/:userid2",async(req,res)=>{
     }
 })
 
-setInterval(async() => {
-    try{
-        const users=await User.find();
-        for(const user of users){
-            let changed=false;
-            for (const friend of user.friends){
-                if (!friend.lastMessage) continue;
-                const minutesIdle=(Date.now()-friend.lastMessage)/60000;
-                if (minutesIdle>2&& friend.weight<9){
-                    friend.weight=Math.min(friend.weight+0.2,9);
-                    changed=true;
-                }
-            }
-            if (changed) await user.save();
-        }
-        console.log("weights decayed");
-    }
-    catch(err){
-        console.log("error updating weights");
-    }    
-}, 120000);
-
-module.exports = router;
 module.exports=router;

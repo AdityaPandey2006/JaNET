@@ -26,7 +26,7 @@ function msfFind(adjList) {
                 //front[0] will be weightBetweenFrontAndParent front[1] is node front[2] is its parent
                 if (front[2] !== -1) {
                     if (!visited[front[1]]) {
-                        const newEdge = [front[2], front[1]];
+                        const newEdge = [front[2], front[1],front[0]];
                         msf.push(newEdge);
                     }
                 }
@@ -80,19 +80,24 @@ let msfFinder=async function(){
     const msfIdWise=msf.map((edge)=>{
         const node1Index=edge[0];
         const node2Index=edge[1];
+        const weightEdge=edge[2];
         const node1Id=indexIdMap[node1Index];
         const node2Id=indexIdMap[node2Index];
-        const IdEdge=[node1Id,node2Id];
+        const IdEdge=[node1Id,node2Id,weightEdge];
         return IdEdge;
     });
-    return msfIdWise;
+    return {edges:msfIdWise,userList};
 }
 
 
 router.get('/msf', async (req,res)=>{
     try{
-        const edges=await msfFinder();
-        res.status(200).json({message:"msf generated: ",msf:edges});
+        const {edges,userList}=await msfFinder();
+        const allNodes = userList.map(user => ({
+                id: user._id.toString(),
+                label: user.username
+            }));
+        res.status(200).json({message:"msf generated: ",msfNodes:allNodes,msfEdges:edges});
     }
     catch(err){
         errMessage="error generating msf"+err.message;
