@@ -2,6 +2,7 @@ const express=require('express');
 const router=express.Router();
 const User=require('../models/User');
 const { MinPriorityQueue } = require('@datastructures-js/priority-queue');
+const { Queue } = require('@datastructures-js/queue');
 
 // msfFind finds the minimal spanning forest from the adjacency list of the indexes of mongodb ids
 function msfFind(adjList) {
@@ -96,6 +97,122 @@ router.get('/msf', async (req,res)=>{
     catch(err){
         errMessage="error generating msf"+err.message;
         res.status(500).json({message: errMessage});
+    }
+});
+
+router.get('/:id/shortestpath',async(req,res)=>{
+    try{
+        const userId = req.params.id;
+        const targetId = req.query.target;
+
+        if(targetId === userId){
+            return res.status(200).json({ path: [userId] });
+        }
+
+        const userObj = await User.findById(userId);
+        const targetObj = await User.findById(targetId);
+
+        if (!userObj || !targetObj) {
+            return res.status(404).json({ message: "Start or target user not found" });
+        }
+
+        const queueF = new Queue();
+        const queueB = new Queue();
+
+        const parentF = new Map();
+        const parentB = new Map();
+
+        queueF.enqueue(userId);
+        parentF.set(userId,null);
+
+        queueB.enqueue(targetId);
+        parentB.set(targetId,null);
+
+        async function getFriendIds(userId) {
+            const u = await User.findById(userId, { friends: 1 }); // project only friends
+            if (!u || !u.friends) return [];
+            return u.friends.map(f => f.userId.toString());
+        }
+
+        function makePath(meet){
+            const pathLeft = [];
+            let curr = meet;
+            while(curr !== null){
+                pathLeft.push(curr);
+                curr = parentF.get(curr);
+            }
+            pathLeft.reverse();
+
+            const pathRight = [];
+            curr = parentB.get(meet);
+            while(curr != null){
+                pathRight.push(curr);
+                curr = parentB.get(curr);
+            }
+            return pathLeft.concat(pathRight);
+        }
+
+        async function expandFrontier(q, mineParents, otherParents){
+            const layerSize =  q.size ? q.size() : undefined;
+            const steps = (typeof layerSize == 'number' && layerSize > 0) ? layerSize : 1;
+            for(let i = 0;i<steps;i++){
+                if(q.isEmpty()) break;
+                const node = q.dequeue();
+                const friends = await getFriendIds(node);
+                for(const fr of friends){
+                    if(!mineParents.has(fr)){
+                        mineParents.set(fr,node);
+                        q.enqueue(fr);
+                        if(otherParents.has(fr)){
+                            return fr;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        let meetingNode = null;
+
+        while(!queueF.isEmpty() && !queueB.isEmpty()){
+            let meet = null;
+            const sizeF = queueF.size ? queueF.size() : Infinity;
+            const sizeB = queueB.size ? queueB.size() : Infinity;
+
+            if(sizeF <= sizeB){
+                meet = await expandFrontier(queueF, parentF, parentB);
+                if(meet){
+                    meetingNode = meet;
+                    break;
+                }
+                meet = await expandFrontier(queueB, parentB, parentF);
+                if(meet){
+                    meetingNode = meet;
+                    break;
+                }
+            } else {
+                meet = await expandFrontier(queueB, parentB, parentF);
+                if(meet){
+                    meetingNode = meet;
+                    break;
+                }
+                meet = await expandFrontier(queueF, parentF, parentB);
+                if(meet){
+                    meetingNode = meet;
+                    break;
+                }
+            }
+        }
+
+        if(!meetingNode){
+            return res.status(404).json({message: "No such path exists between these given users"});
+        }
+
+        const path = makePath(meetingNode);
+        return res.status(200).json({ path });
+    }
+    catch(err){
+        res.status(400).json({message: 'Encountered error: ' + err.message});
     }
 });
 

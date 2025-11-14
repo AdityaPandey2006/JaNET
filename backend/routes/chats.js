@@ -99,7 +99,7 @@ setInterval(async() => {
             }
             if (changed) await user.save();
         }
-         console.log("✅ Friendship weights decayed");
+        console.log("weights decayed");
     }
     catch(err){
         console.log("error updating weights");
