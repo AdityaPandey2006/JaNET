@@ -4,6 +4,11 @@ const router=express.Router();
 const User=require('../models/User'); //jo user ke actual collection ko export karwa rahe the User.js se, yeh basically allow karte hai mongodb pe jitne bhi users hain unko access karne ko
 const { MaxPriorityQueue } = require('@datastructures-js/priority-queue');
 
+//for encryption and password security\
+const bcrypt=require("bcryptjs");
+const jwt=require("jsonwebtoken");
+const auth=require("../middleware/auth");
+
 
 
 //adding a new node(new user)
@@ -12,14 +17,34 @@ const { MaxPriorityQueue } = require('@datastructures-js/priority-queue');
 router.post('/addUser', async (req,res)=>{
     try{
         const userData=req.body;//the request consists the data of the new user that has to be added to User collection
+        const { name, username, email, password, department, year, intro }=userData;
+        const existUser=await User.findOne({email}); //find on the basis of one field if the user exist or not
+        if(existUser){
+            return res.status(400).json({message:"email already registered"});
+        }
+        const hashedPassword=await bcrypt.hash(password,10);//10 here is the salt round factoe its actualy in the power of 10->1024 its how mamy tyoime an hashing is run and encryotiption is done ver them so it make it very secure plus also tine taking (whiuch is good)
+        //create new user info in json format for the db
+        const newUser=new User({
+            name,
+            username,
+            email,
+            password: hashedPassword,
+            department,
+            year,
+            intro,
+        });
+        //saev user info to th db wait till it does tht
+        await newUser.save();
+        res.status(201).json({
+            message:"New user has been added",
+            user:{
+                _id:newUser._id,
+                name:newUser.name,
+                username:newUser.username,
+                email:newUser.email,
+            }
+        });
 
-        const {name,username,email,password,department,year,intro}=userData;//a new user wont have friends so the req will not contain the list of friends
-
-        //we create a new user of the type User by putting in the details and then, mongoose knows that newUser is of type User so the mongoose command .save() saves the newUser in the User collection
-        const newUser=new User({name,username,email,password,department,year,intro});
-
-        await newUser.save(); //let the data get saved
-        res.status(201).json({message:'new user added',user:newUser});//201 matlab naya resource successfully ban gaya
     }
     catch(err){
         let errMessage="could not create new user "+err.message;
@@ -34,19 +59,43 @@ router.post('/addmass',async (req,res)=>{
         if (!Array.isArray(usersData) || usersData.length === 0) {
             return res.status(400).json({ message: "Request body must be a non-empty array of users." });
         }
-
-        for (let user of usersData) {
-            const { name, username, email } = user;
-            if (!name || !username || !email) {
-                return res.status(400).json({ message: "Each user must have name, username, and email." });
+        const preparedUsers=[];
+        for (const user of usersData) {
+            const { name, username, email ,password,department,year,intro} = user;
+            if (!name || !username || !email || !password) {
+                return res.status(400).json({ message: "Each user must have name, username, and email,and a password." });
             }
+
+            const existingUser = await User.findOne({ email });
+            if (existingUser) {
+                return res.status(400).json({
+                message: `Email already registered: ${email}`
+                });
+            }
+
+            const hashedPassword=await bcrypt.hash(password,10);
+
+            preparedUsers.push({
+                name,
+                username,
+                email,
+                password:hashedPassword,
+                department,
+                year,
+                intro,
+            });
         }
 
-        const newUsers = await User.insertMany(usersData, {ordered:false});
+        const newUsers = await User.insertMany(preparedUsers, {ordered:false});
 
         res.status(201).json({
             message: `${newUsers.length} users added successfully`,
-            users: newUsers
+            users: newUsers.map((user)=>({
+                _id:user._id,
+                name:user.name,
+                username:user.username,
+                email:user.email
+            }))
         });
     }
     catch(err){
@@ -54,7 +103,6 @@ router.post('/addmass',async (req,res)=>{
         res.status(500).json({message:errMessage});
     }
 });
-
 
 //loading the entire list of users
 router.get('/',async(req,res)=>{
@@ -65,6 +113,67 @@ router.get('/',async(req,res)=>{
     catch(err){
         let errMessage="could not load user list "+err.message;
         res.status(500).json({message:errMessage});
+    }
+});
+
+router.get('/search/:username',async(req,res)=>{
+    try{
+        let username=req.params.username;
+        const thisName=await User.findOne({username});
+        if(!thisName){
+            return res.status(404).json({message:"This user doesn't exist"});
+        }
+        res.json(thisName);
+    }
+    catch(err){
+        res.status(500).json({message:"Encountered "+err.message});
+    }
+
+})
+
+//email exists and password matches
+router.post('/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        // Check if user exists
+        const user = await User.findOne({ email }).select("+password"); //as passord is not returned now by default so need to add this
+        if (!user) {
+            return res.status(400).json({message:"User not found" });
+        }
+        // now match password}
+        const match=await bcrypt.compare(password,user.password);
+        if(!match){
+            return res.status(400).json({message:"Invalid credentials,try agin" });
+        }
+        const token=jwt.sign(
+            {userId:user._id,email:user.email},//payload
+            process.env.JWT_SECRET,//the key using whuhc the signatuere will be made 
+            {expiresIn:process.env.JWT_EXPIRES_IN || "15m"}//this is the the expiratuon date of the token after this againuser logins
+        );
+        // Return user info
+        res.status(200).json({
+            message: "Login successful",
+            token,
+            user:{
+                _id:user._id,
+                name:user.name,
+                username:user.username,
+                email:user.email
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ message: "Login error: " + err.message });
+    }
+});
+
+//this route is test user info  checking if anyproblem runs suggested 
+router.get('/me', auth, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.userId);
+        res.status(200).json(user);
+    } catch (err) {
+        res.status(500).json({ message: "Could not fetch user: " + err.message });
     }
 });
 
@@ -81,62 +190,6 @@ router.get('/:id',async(req,res)=>{
         res.status(500).json({message:errMessage});
     }
 })
-
-
-router.get('/search/:username',async(req,res)=>{
-    try{
-        let username=req.params.username;
-        const thisName=await User.findOne({username});
-        if(!thisName){
-            res.status(404).json({message:"This user doesn't exist"});
-        }
-        res.json(thisName);
-    }
-    catch(err){
-        res.status(500).json({message:"Encountered "+err.Message});
-    }
-
-})
-
-
-
-//email exists and password matches
-router.post('/login', async (req, res) => {
-    try {
-        const { email, password } = req.body;
-
-        // Check if user exists
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(400).json({ message: "User not found" });
-        }
-
-        // Simple password match (plain text for now)
-        if (user.password !== password) {
-            return res.status(400).json({ message: "Invalid password" });
-        }
-
-        // Return user info
-        res.status(200).json({
-            message: "Login successful",
-            user
-        });
-    } catch (err) {
-        res.status(500).json({ message: "Login error: " + err.message });
-    }
-});
-
-
-
-
-module.exports=router;//after this plugged in this router to the server.js
-
-
-
-
-
-// module.exports=router;//after this plugged in this router to the server.js
-// module.exports=router;//after this plugged in this router to the server.js
 
 /*This users.js file creates the respective routes a person has to visit in order to: 
 1)get the full list of users(nodes) and 
@@ -179,19 +232,12 @@ router.get('/:id/getFriends',async(req,res)=>{
 });
 
 
-function findFriends(userid){
-    const userObj = User.findById(userid);
-
+async function findFriends(userid){
+    const userObj =await User.findById(userid);
     if(!userObj){
-        res.status(500).json({message: "User Does not exist"});
-        return;
+        return null;
     }
-    
-    const friends = userObj.friends.map((friend)=>{
-        return friend.userId;
-    })
-
-    return friends;
+    return userObj.friends.map((friend) => friend.userId);
 }
 
 //get friend recommendations page using BFS
@@ -199,11 +245,13 @@ router.get('/:id/friendrecommendations', async(req,res) => {
     try{
         const userid = req.params.id;
 
-        const friends = findFriends(userid);
-
-        const fof = friends.map((element) => {
-            return findFriends(element);
-        })
+        const friends = await findFriends(userid);
+        if (!friends) {
+            return res.status(404).json({ message: "User does not exist" });
+        }
+        const fof = await Promise.all(
+            friends.map((friendId) => findFriends(friendId))
+        );
 
         res.status(200).json({fof});
     }
@@ -211,7 +259,6 @@ router.get('/:id/friendrecommendations', async(req,res) => {
         res.status(500).json({message:"Could not recommend friends due to error: "+err});
     }
 });
-
 
 //gvinng friend recommendations to a user
 //user A ko friend recommendation dene ke liye hum log basically friends of friends ka use karte hain

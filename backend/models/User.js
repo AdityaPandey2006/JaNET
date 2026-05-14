@@ -21,7 +21,9 @@
         },
         password:{
             type:String,
-            required:true
+            required:true,
+            minlength:6,
+            select:false //password will ot be returned by deafualt if this is false
         },
         department:{
             type:String
