@@ -88,12 +88,12 @@ router.get('/search/:username',async(req,res)=>{
         let username=req.params.username;
         const thisName=await User.findOne({username});
         if(!thisName){
-            res.status(404).json({message:"This user doesn't exist"});
+            return res.status(404).json({message:"This user doesn't exist"});
         }
         res.json(thisName);
     }
     catch(err){
-        res.status(500).json({message:"Encountered "+err.Message});
+        res.status(500).json({message:"Encountered "+err.message});
     }
 
 })
