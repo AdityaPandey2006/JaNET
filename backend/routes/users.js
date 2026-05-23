@@ -9,6 +9,96 @@ const bcrypt=require("bcryptjs");
 const jwt=require("jsonwebtoken");
 const auth=require("../middleware/auth");
 
+//do autocompletre
+function createTrieNode(){
+    return {
+        children:{},
+        users:[],
+        isEndOfWord:false,
+    };
+}
+
+const userTrieRoot=createTrieNode();
+
+function insertUserIntoTrie(root,user){
+    const valuesToIndex=[user.username,user.name];
+
+    for(const value of valuesToIndex){
+        if(!value){
+            continue;
+        }
+
+        let currentNode=root;
+        const normalizedValue=value.toLowerCase();
+
+        for(const char of normalizedValue){
+            if(!currentNode.children[char]){
+                currentNode.children[char]=createTrieNode();
+            }
+            currentNode=currentNode.children[char];
+        }
+
+        currentNode.isEndOfWord=true;
+        currentNode.users.push({
+            _id:user._id,
+            name:user.name,
+            username:user.username,
+            email:user.email,
+            department:user.department,
+            year:user.year,
+        });
+    }
+}
+
+function searchTrieSuggestions(root,prefix,limit=10){
+    if(!prefix){
+        return [];
+    }
+
+    let currentNode=root;
+    const normalizedPrefix=prefix.toLowerCase();
+
+    for(const char of normalizedPrefix){
+        if(!currentNode.children[char]){
+            return [];
+        }
+        currentNode=currentNode.children[char];
+    }
+
+    const suggestions=[];
+    const seenUsers=new Set();
+
+    function collectSuggestions(node){
+        if(suggestions.length>=limit){
+            return;
+        }
+
+        for(const user of node.users){
+            if(suggestions.length>=limit){
+                return;
+            }
+
+            const userId=String(user._id);
+            if(seenUsers.has(userId)){
+                continue;
+            }
+
+            seenUsers.add(userId);
+            suggestions.push(user);
+        }
+
+        for(const char of Object.keys(node.children)){
+            if(suggestions.length>=limit){
+                return;
+            }
+            collectSuggestions(node.children[char]);
+        }
+    }
+
+    collectSuggestions(currentNode);
+    return suggestions;
+}
+
 
 
 //adding a new node(new user)
@@ -35,6 +125,7 @@ router.post('/addUser', async (req,res)=>{
         });
         //saev user info to th db wait till it does tht
         await newUser.save();
+        insertUserIntoTrie(userTrieRoot,newUser);
         res.status(201).json({
             message:"New user has been added",
             user:{
@@ -87,6 +178,9 @@ router.post('/addmass',async (req,res)=>{
         }
 
         const newUsers = await User.insertMany(preparedUsers, {ordered:false});
+        newUsers.forEach((user)=>{
+            insertUserIntoTrie(userTrieRoot,user);
+        });
 
         res.status(201).json({
             message: `${newUsers.length} users added successfully`,
@@ -365,6 +459,43 @@ router.delete('/deleteAll', async (req, res) => {
     }
     catch (err) {
         res.status(500).json({ message: 'Error deleting users: ' + err.message });
+    }
+});
+
+router.post('/trie/indexUsers',async(req,res)=>{
+    try{
+        userTrieRoot.children={};
+        userTrieRoot.users=[];
+        userTrieRoot.isEndOfWord=false;
+
+        const allUsers=await User.find().select("_id name username email department year");
+
+        allUsers.forEach((user)=>{
+            insertUserIntoTrie(userTrieRoot,user);
+        });
+
+        res.status(200).json({
+            message:"All current users have been indexed into the trie",
+            indexedUsers:allUsers.length
+        });
+    }
+    catch(err){
+        res.status(500).json({message:"Could not index users into trie: "+err.message});
+    }
+});
+
+router.get('/trie/autoSearch',async(req,res)=>{
+    try{
+        const query=(req.query.q||"").trim();
+        const suggestions=searchTrieSuggestions(userTrieRoot,query,10);
+
+        res.status(200).json({
+            query,
+            suggestions
+        });
+    }
+    catch(err){
+        res.status(500).json({message:"Could not search trie: "+err.message});
     }
 });
 
