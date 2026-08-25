@@ -221,4 +221,78 @@ router.get('/:id/shortestpath',async(req,res)=>{
     }
 });
 
+
+// Finds the path with the lowest total friendship weight. Unlike BFS, this can
+// prefer a longer path when its combined connection weight is smaller.
+router.get('/:id/dijkstra', async (req, res) => {
+    try {
+        const startId = req.params.id;
+        const targetId = req.query.target;
+
+        if (!targetId) {
+            return res.status(400).json({ message: "Target user id is required" });
+        }
+
+        const users = await User.find({}, { _id: 1, friends: 1 }).lean();
+        const usersById = new Map(users.map(user => [user._id.toString(), user]));
+
+        if (!usersById.has(startId) || !usersById.has(targetId)) {
+            return res.status(404).json({ message: "Start or target user not found" });
+        }
+
+        if (startId === targetId) {
+            return res.status(200).json({ path: [startId], totalWeight: 0 });
+        }
+
+        const distances = new Map([[startId, 0]]);
+        const parents = new Map([[startId, null]]);
+        const visited = new Set();
+        const pq = new MinPriorityQueue(entry => entry.distance);
+        pq.enqueue({ id: startId, distance: 0 });
+
+        while (!pq.isEmpty()) {
+            const current = pq.dequeue();
+            if (visited.has(current.id)) continue;
+            visited.add(current.id);
+
+            if (current.id === targetId) break;
+
+            const user = usersById.get(current.id);
+            for (const friend of user.friends || []) {
+                const friendId = friend.userId.toString();
+                const weight = Number(friend.weight);
+
+                if (!usersById.has(friendId)) continue;
+                if (!Number.isFinite(weight) || weight < 0) {
+                    return res.status(400).json({
+                        message: "Dijkstra requires every friendship weight to be a non-negative number"
+                    });
+                }
+
+                const newDistance = current.distance + weight;
+                if (newDistance < (distances.get(friendId) ?? Infinity)) {
+                    distances.set(friendId, newDistance);
+                    parents.set(friendId, current.id);
+                    pq.enqueue({ id: friendId, distance: newDistance });
+                }
+            }
+        }
+
+        if (!distances.has(targetId)) {
+            return res.status(404).json({ message: "No such path exists between these given users" });
+        }
+
+        const path = [];
+        for (let current = targetId; current !== null; current = parents.get(current)) {
+            path.push(current);
+        }
+        path.reverse();
+
+        return res.status(200).json({ path, totalWeight: distances.get(targetId) });
+    }
+    catch (err) {
+        return res.status(400).json({ message: 'Encountered error: ' + err.message });
+    }
+});
+
 module.exports=router;

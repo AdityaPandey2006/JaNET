@@ -225,7 +225,7 @@ router.get("/:id/postrec", async (req, res) => {
   }
 });
 
-router.get('/:postId/like', async(req,res) => {
+router.put('/:postId/like', async(req,res) => {
     try{
         const { postId } = req.params;
         const { userId } = req.body;

@@ -229,7 +229,8 @@ async function friendGetter(userObj1){
 }
 
 let jaccardSim=function(friendsCountA,friendsCountB,mutualFriendsCount){
-    return mutualFriendsCount/(friendsCountA+friendsCountB-mutualFriendsCount);//intersection/union
+    const unionSize=friendsCountA+friendsCountB-mutualFriendsCount;
+    return unionSize===0 ? 0 : mutualFriendsCount/unionSize;//intersection/union
 }
 
 router.get('/:id/giveRecommendation',async (req,res)=>{
@@ -298,6 +299,46 @@ router.get('/:id/giveRecommendation',async (req,res)=>{
             if(pq.isEmpty()) break;
             actualRecommendations.push(pq.front());
             pq.dequeue();
+        }
+        // Cold-start fallback when the graph has no friends-of-friends recommendations.
+        if(actualRecommendations.length===0){
+            const excludedIds=new Set([
+                userId.toString(),
+                ...userObj.friends.map(friend=>friend.userId.toString()),
+                ...userObj.sentRequests.map(request=>request.sentTo.toString()),
+                ...userObj.friendRequests.map(request=>request.requestsFrom.toString())
+            ]);
+
+            const eligibleUsers=(await User.find({}, "username department year")).filter(candidate=>
+                !excludedIds.has(candidate._id.toString())
+            );
+
+            const similarUsers=eligibleUsers.filter(candidate=>
+                (userObj.department && candidate.department===userObj.department) ||
+                (userObj.year!=null && candidate.year===userObj.year)
+            );
+
+            let fallbackUsers=similarUsers;
+            let reason="same_department_or_year";
+
+            if(fallbackUsers.length===0){
+                fallbackUsers=[...eligibleUsers];
+                reason="random";
+            }
+
+            // Shuffle so that fallback recommendations are not always in database order.
+            for(let i=fallbackUsers.length-1;i>0;i--){
+                const j=Math.floor(Math.random()*(i+1));
+                [fallbackUsers[i],fallbackUsers[j]]=[fallbackUsers[j],fallbackUsers[i]];
+            }
+
+            actualRecommendations=fallbackUsers.slice(0,maxRecc).map(candidate=>({
+                sim:0,
+                id:candidate._id.toString(),
+                mutual:0,
+                username:candidate.username,
+                reason
+            }));
         }
         res.status(200).json({message:"friend recommendation",recommendations:actualRecommendations});
     }
