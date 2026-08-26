@@ -37,8 +37,8 @@ router.post('/addmass',async (req,res)=>{
 
         for (let user of usersData) {
             const { name, username, email } = user;
-            if (!name || !username || !email) {
-                return res.status(400).json({ message: "Each user must have name, username, and email." });
+            if (!name || !username || !email || !user.password) {
+                return res.status(400).json({ message: "Each user must have name, username, email, and password." });
             }
         }
 
@@ -73,6 +73,9 @@ router.get('/',async(req,res)=>{
 router.get('/:id',async(req,res)=>{
     try{
         let id1=req.params.id;
+        if (!mongoose.isValidObjectId(id1)) {
+            return res.status(400).json({message:"Invalid user id"});
+        }
         const thisUser=await User.findById(id1);
         res.json(thisUser); //basically returns the user object as json
     }
@@ -88,7 +91,7 @@ router.get('/search/:username',async(req,res)=>{
         let username=req.params.username;
         const thisName=await User.findOne({username});
         if(!thisName){
-            res.status(404).json({message:"This user doesn't exist"});
+            return res.status(404).json({message:"This user doesn't exist"});
         }
         res.json(thisName);
     }
@@ -179,12 +182,11 @@ router.get('/:id/getFriends',async(req,res)=>{
 });
 
 
-function findFriends(userid){
-    const userObj = User.findById(userid);
+async function findFriends(userid){
+    const userObj = await User.findById(userid);
 
     if(!userObj){
-        res.status(500).json({message: "User Does not exist"});
-        return;
+        return [];
     }
     
     const friends = userObj.friends.map((friend)=>{
@@ -199,11 +201,9 @@ router.get('/:id/friendrecommendations', async(req,res) => {
     try{
         const userid = req.params.id;
 
-        const friends = findFriends(userid);
+        const friends = await findFriends(userid);
 
-        const fof = friends.map((element) => {
-            return findFriends(element);
-        })
+        const fof = await Promise.all(friends.map((element) => findFriends(element)));
 
         res.status(200).json({fof});
     }
