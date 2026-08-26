@@ -59,6 +59,10 @@ router.get('/:id/userPosts', async (req, res) => {
     const count = await Post.countDocuments();
     console.log("Total posts in DB:", count);
 
+    if (!mongoose.isValidObjectId(userId)) {
+      return res.status(400).json({ message: "Invalid user id" });
+    }
+
     const mongoId = new mongoose.Types.ObjectId(userId);
 
     const posts = await Post.find({ author: mongoId }, 'title description');
@@ -80,7 +84,10 @@ router.get('/:id/userPosts', async (req, res) => {
 
 router.get('/:id/user', async (req, res) => {
     try {
-        const posts = await Post.find({},'title description');
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: "Invalid user id" });
+    }
+    const posts = await Post.find({author: req.params.id},'title description');
         res.json(posts);
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -228,7 +235,7 @@ router.get("/:id/postrec", async (req, res) => {
 router.get('/:postId/like', async(req,res) => {
     try{
         const { postId } = req.params;
-        const { userId } = req.body;
+    const userId = req.query.userId || req.body?.userId;
         
         if (!mongoose.isValidObjectId(postId) || !mongoose.isValidObjectId(userId)) {
             return res.status(400).json({ message: 'Invalid postId or userId' });

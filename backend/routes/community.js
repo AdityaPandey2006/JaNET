@@ -4,26 +4,28 @@ const router=express.Router();
 
 const threshold=8;
 //using dfs to explore connected user and create communities
-function dfs(userId,graph,visited,currentCommunity){
+function dfs(userId,graph,userNames,visited,currentCommunity){
     visited.add(userId);
-    userobj=User.findById(userId);
-    currentCommunity.push(userobj.name);
+    currentCommunity.push(userNames.get(userId));
     const neighbours=graph[userId]||[];
 
     for (const neighbour of neighbours){
         if (!visited.has(neighbour.friendId)&&neighbour.weight<=threshold){
-            dfs(neighbour.friendId,graph,visited,currentCommunity);
+            dfs(neighbour.friendId,graph,userNames,visited,currentCommunity);
         }
     }
 }
 
 router.get("/communities",async(req,res)=>{
     try{
-        const users=await User.find({},"friends");
+        const users=await User.find({},"name friends");
         const graph={};
+        const userNames=new Map();
         //build graph
         for (const user of users){
-            graph[user._id.toString()]=user.friends.map((f)=>({
+            const userId=user._id.toString();
+            userNames.set(userId,user.name);
+            graph[userId]=user.friends.map((f)=>( {
                 friendId:f.userId.toString(),
                 weight:f.weight
             }));
@@ -34,7 +36,7 @@ router.get("/communities",async(req,res)=>{
         for (const userId in graph){
             if (!visited.has(userId)){
                 const currentCommunity=[];
-                dfs(userId,graph,visited,currentCommunity);
+                dfs(userId,graph,userNames,visited,currentCommunity);
                 //considering communities>1
                 if (currentCommunity.length>1){
                     communities.push(currentCommunity);

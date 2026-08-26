@@ -1,3 +1,4 @@
+const mongoose=require('mongoose');
 const express=require('express');
 const router=express.Router();
 const User=require('../models/User');
@@ -69,10 +70,12 @@ let msfFinder=async function(){
     for(let i=0;i<count;i++){
         const friendList=userList[i].friends;
         for(let friend of friendList){
-            friendId=friend.userId.toString();
-            friendWeight=friend.weight;
+            const friendId=friend.userId.toString();
+            const friendWeight=friend.weight;
             const indexOfFriend=indexIdMap.indexOf(friendId.toString());
-            adjList[i].push([friendWeight,indexOfFriend]);
+            if (indexOfFriend !== -1) {
+                adjList[i].push([friendWeight,indexOfFriend]);
+            }
         }
     }
     //once we have the adjList in the form of indices, we pass it to the msfFind function
@@ -109,6 +112,10 @@ router.get('/:id/shortestpath',async(req,res)=>{
     try{
         const userId = req.params.id;
         const targetId = req.query.target;
+
+        if (!mongoose.isValidObjectId(userId) || !mongoose.isValidObjectId(targetId)) {
+            return res.status(400).json({ message: "Invalid user id" });
+        }
 
         if(targetId === userId){
             return res.status(200).json({ path: [userId] });

@@ -1,5 +1,6 @@
 //for now, we will have all the weights of connections set to 1. So, essentially the graph is unweighted for now.
 //will also account for the weights later
+const mongoose=require('mongoose');
 const express=require('express');
 const router=express.Router();
 const User=require('../models/User');
@@ -13,6 +14,9 @@ router.post('/sendrequest', async (req,res)=>{
         const { senderId, receiverId } = req.body;
         const userId1 = senderId; // this is because the frontend is set to send userid and reciever id instead of yser and target id the variabke name causes there to vbe undefined behavuiour
         const targetId = receiverId;
+        if (!mongoose.isValidObjectId(userId1) || !mongoose.isValidObjectId(targetId)) {
+            return res.status(400).json({message:"Invalid user id"});
+        }
         //no one can friend themself
         //no need since user bar me koi khudko search nahi kar sakta...
         if(userId1===targetId){
@@ -89,6 +93,9 @@ router.post('/sendmass', async (req, res) => {
         if (!Array.isArray(targetIds) || targetIds.length === 0) {
             return res.status(400).json({ message: "targetIds must be a non-empty array" });
         }
+        if (!mongoose.isValidObjectId(userId)) {
+            return res.status(400).json({ message: "Invalid user id" });
+        }
 
         const userObj = await User.findById(userId);
         if (!userObj) {
@@ -97,7 +104,10 @@ router.post('/sendmass', async (req, res) => {
 
         const validTargets = [];
 
+        const processedTargets = new Set();
         for (const targetId of targetIds) {
+            if (!mongoose.isValidObjectId(targetId) || processedTargets.has(targetId)) continue;
+            processedTargets.add(targetId);
             if (targetId === userId) continue; // can't friend self
                 const targetObj = await User.findById(targetId);
             if (!targetObj) continue; // skip invalid IDs
@@ -117,6 +127,7 @@ router.post('/sendmass', async (req, res) => {
                 );
 
                 validTargets.push(targetId);
+                userObj.sentRequests.push({sentTo: targetId});
             }
         }
 
