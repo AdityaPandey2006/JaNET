@@ -4,6 +4,7 @@
     */
     const mongoose=require('mongoose');
     const Post = require('./Post');
+
     //each user will have name, username, numOfPosts(later), an intro 
     const userSchema=new mongoose.Schema({
         name:{
@@ -21,7 +22,9 @@
         },
         password:{
             type:String,
-            required:true
+            required:true,
+            minlength:6,
+            select:false //password will ot be returned by deafualt if this is false
         },
         department:{
             type:String
@@ -71,4 +74,5 @@
             },
         }]
     });
+
     module.exports=mongoose.model("User",userSchema);//isko export karna padega baaki models mein use karne ke liye
